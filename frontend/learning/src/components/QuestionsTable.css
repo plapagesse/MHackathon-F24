@@ -1,0 +1,48 @@
+/* src/components/QuestionsTable.css */
+.questions-container {
+  width: 90%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.questions-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.questions-table th,
+.questions-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.questions-table th {
+  background-color: #f2f2f2;
+}
+
+.discard-button {
+  padding: 10px 20px;
+  background-color: #ff4d4d;
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.discard-button:hover {
+  background-color: #e60000;
+}
+
+@media screen and (max-width: 768px) {
+  .questions-table th,
+  .questions-table td {
+    padding: 6px;
+  }
+
+  .discard-button {
+    width: 100%;
+  }
+}
