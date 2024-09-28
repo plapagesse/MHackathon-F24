@@ -4,7 +4,7 @@ import './GameScreen.css';
 
 
 const GameScreen = ({ players, onGameEnd }) => {
-  const [timeLeft, setTimeLeft] = useState(60); // Assuming 60 seconds for now
+  const [timeLeft, setTimeLeft] = useState(2); // Assuming 60 seconds for now
   const [paragraphs, setParagraphs] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState("");

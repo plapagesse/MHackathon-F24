@@ -3,12 +3,15 @@ import { useState } from "react";
 import "./App.css";
 import GameScreen from "./components/GameScreen";
 import PlayerTable from "./components/PlayerTable";
+import Scoreboard from "./components/ScoreBoard";
 import TopicUpload from "./components/TopicUpload";
+
 
 function App() {
   const [topic, setTopic] = useState("");
   const [players, setPlayers] = useState(["foo"]);
   const [isGameStarted, setIsGameStarted] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
 
   const handleDiscard = () => {
     setStudyQuestions([]);
@@ -20,9 +23,14 @@ function App() {
 
   const handleGameEnd = () => {
     alert("Game over!");
-    setIsGameStarted(false); // Reset the game
-    setPlayers([]); // Clear players after game ends (optional, depending on flow)
-    setTopic(""); // Reset the topic for a new game
+    setIsGameStarted(false);
+    setIsGameOver(true);
+  };
+
+  const handleRestartGame = () => {
+    setIsGameOver(false);
+    setPlayers([]);
+    setTopic("");
   };
   
   return (
@@ -31,7 +39,9 @@ function App() {
         <h1>Ailusion</h1>
       </header>
       <main>
-        {!isGameStarted ? (
+        {isGameOver ? (
+          <Scoreboard players={players} onRestart={handleRestartGame} />
+        ) : !isGameStarted ? (
           topic === "" ? (
             <TopicUpload setTopic={setTopic} />
           ) : (
