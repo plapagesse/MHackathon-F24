@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -46,5 +46,11 @@ class StudyQuestion(BaseModel):
         )
 
 
+class StudyNarrative(BaseModel):
+    narrative: str
+    misinformation: List[str]
+
+
 class StudyQuestionResponse(BaseModel):
-    study_questions: List[StudyQuestion]
+    study_questions: Optional[List[StudyQuestion]] = None
+    study_narrative: Optional[StudyNarrative] = None
