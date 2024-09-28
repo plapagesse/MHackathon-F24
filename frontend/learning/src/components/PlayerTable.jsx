@@ -2,6 +2,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid"; // Import uuidv4
 import useWebSocket from "../hooks/useWebSocket";
 
 function PlayerTable() {
@@ -12,7 +13,7 @@ function PlayerTable() {
   const [playerName, setPlayerName] = useState("");
   const [nameEntered, setNameEntered] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
-  const userId = localStorage.getItem("user_id");
+  const [userId, setUserId] = useState(null); // Add userId state
 
   useEffect(() => {
     // Function to check if the current user is the host and fetch current players
@@ -21,7 +22,18 @@ function PlayerTable() {
         // Fetch lobby details to verify if user is the host
         const response = await axios.get(`/api/lobby/${lobbyId}`);
         const { creator_id, topic } = response.data;
-        if (creator_id === userId) {
+
+        // Retrieve or generate user_id
+        let storedUserId = localStorage.getItem("user_id");
+        if (!storedUserId) {
+          // Generate a new user_id if not present
+          storedUserId = uuidv4();
+          localStorage.setItem("user_id", storedUserId);
+        }
+        setUserId(storedUserId);
+
+        // Determine if the current user is the host
+        if (creator_id === storedUserId) {
           setIsHost(true);
         }
 
@@ -39,7 +51,7 @@ function PlayerTable() {
     // Generate the invite link
     const currentLink = `${window.location.origin}/playertable/${lobbyId}`;
     setInviteLink(currentLink);
-  }, [lobbyId, userId]);
+  }, [lobbyId]);
 
   // WebSocket message handler
   const handleIncomingMessage = (message) => {
@@ -98,7 +110,11 @@ function PlayerTable() {
       setNameEntered(true);
     } catch (error) {
       console.error("Error joining lobby:", error);
-      alert("Failed to join lobby. Please ensure the lobby ID is correct.");
+      if (error.response && error.response.status === 422) {
+        alert("Failed to join lobby. Please try again.");
+      } else {
+        alert("An unexpected error occurred. Please try again.");
+      }
     }
   };
 
@@ -159,7 +175,17 @@ function PlayerTable() {
           <button
             onClick={() => {
               if (playerName.trim()) {
+                // Optionally, you can send a message to update the host's name
+                sendMessage(
+                  JSON.stringify({
+                    type: "update_username",
+                    playerName: playerName,
+                  })
+                );
                 setPlayers((prevPlayers) => [...prevPlayers, playerName]);
+                setNameEntered(true);
+              } else {
+                // If host chooses not to enter a name, proceed
                 setNameEntered(true);
               }
             }}
