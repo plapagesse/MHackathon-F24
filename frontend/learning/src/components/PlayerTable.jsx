@@ -1,5 +1,6 @@
 // src/components/PlayerTable.jsx
-import { useState, useEffect } from "react";
+import axios from "axios";
+import { useEffect, useState } from "react";
 
 function PlayerTable() {
   const [players, setPlayers] = useState([]);
@@ -13,10 +14,18 @@ function PlayerTable() {
   // If host, generate the join code
   useEffect(() => {
     if (isHost) {
-      const generatedCode = Math.floor(
-        100000 + Math.random() * 900000
-      ).toString(); // Generate 6-digit code
-      setJoinCode(generatedCode);
+      // Use axios to fetch the lobby join code
+      const createLobby = async () => {
+        try {
+          const response = await axios.post("/api/create-lobby");
+          console.log("creating code")
+          setJoinCode(response.data.lobby_id); // Use the returned lobby_id as the join code
+        } catch (error) {
+          console.error("Error creating lobby:", error);
+        }
+      };
+
+      createLobby();
     }
   }, [isHost]);
 
