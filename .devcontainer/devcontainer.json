@@ -1,6 +1,7 @@
 {
   "name": "JavaScript and Python Dev Container",
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "forwardPorts": [8000, 5173],
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts"
@@ -26,5 +27,6 @@
     }
   },
   "postCreateCommand": "pip install --user -r backend/requirements-dev.txt",
-  "remoteUser": "vscode"
+  "remoteUser": "vscode",
+  "runArgs": ["--sysctl",  "net.ipv6.conf.all.disable_ipv6=1"]
 }
