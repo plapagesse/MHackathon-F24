@@ -1,7 +1,10 @@
 import io
 import os
 import random
-from typing import List
+import re
+from typing import List, Dict
+
+from dotenv import load_dotenv
 
 import pdfplumber
 from docx import Document
@@ -10,7 +13,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-from app.schemas import StudyQuestion
+from app.schemas import StudyQuestion, StudyNarrative
 
 # from langchain_ollama import ChatOllama
 
@@ -55,7 +58,7 @@ def extract_text_from_docx(content: bytes) -> str:
 
 
 # Function to process document and generate flashcards (multiple choice questions)
-def process_document(content: bytes, filename: str) -> List[StudyQuestion]:
+def process_document(content: bytes, filename: str, generation_type: str) -> List[StudyQuestion]:
     """
     Process the input document and generate multiple-choice flashcards.
 
@@ -82,7 +85,19 @@ def process_document(content: bytes, filename: str) -> List[StudyQuestion]:
     )
     documents = text_splitter.split_text(text)
 
+    if generation_type == "flashcards":
+        return generate_flashcards_from_chunks(documents)
+    elif generation_type == "narrative":
+        return generate_narrative_with_misinformation(" ".join(documents))
+    else:
+        raise ValueError(
+            "Unsupported question/challenge type. Current options: 'flashcards', 'narrative'.")
+
+
+def generate_flashcards_from_chunks(chunks: List[str]) -> List[StudyQuestion]:
+
     # Initialize the LLM (ensure the OpenAI API key is set)
+    load_dotenv()
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
         raise ValueError(
@@ -118,7 +133,7 @@ Questions:
     study_questions = []
 
     # Process each document chunk and generate flashcards
-    for chunk in documents:
+    for chunk in chunks:
         try:
             # Generate the questions for each chunk
             result = chain.invoke({"chunk": chunk})
@@ -134,3 +149,128 @@ Questions:
     random.shuffle(study_questions)
 
     return study_questions
+
+
+def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
+
+    load_dotenv()
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise ValueError("OpenAI API key not found.")
+
+    llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai_api_key)
+
+    prompt_template = f"""
+        You are an expert educational content creator. Given the following content, create a flowing narrative explanation of the subject with 1 intentionally incorrect statement embedded.
+        The players will need to identify this incorrect statement. List the incorrect statement at the end.
+
+        Content: {content}
+
+        Format:
+        Narrative:
+        [narrative here]
+
+        Incorrect statement:
+        1. <incorrect statement>
+    """
+    response = llm.invoke(prompt_template)
+    narrative_text = response.content
+
+    # print("RAW RESPONSE: ", narrative_text)
+
+    narrative_parts = narrative_text.split("Incorrect statement:")
+    narrative = narrative_parts[0].strip()
+    incorrect_statements = [line.strip()
+                            for line in narrative_parts[1].strip().split("\n")]
+
+    print("narrative part", narrative)
+    print("misinfo", incorrect_statements)
+
+    return StudyNarrative(narrative=narrative, misinformation=incorrect_statements)
+
+
+def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: StudyNarrative, max_time: float = 60.0, time_weight: float = 0.2) -> Dict[str, float]:
+    """
+    Grade players' answers as correct (1) or incorrect (0), and adjust the score based on response time for correct answers.
+
+    Args:
+        player_answers (Dict[str, Dict[str, float]]): A dictionary where the key is the player's name/id and the value is their answer and response time.
+        study_narrative (StudyNarrative): The StudyNarrative object containing the correct misinformation.
+
+    Returns:
+        Tuple (raw_scores: Dict[str, float], final_scores: Dict[str, float]): 
+        - raw_scores: 1 if the answer is correct, 0 if incorrect.
+        - final_scores: Adjusted scores based on correctness and response time.
+    """
+    raw_scores = {}
+    final_scores = {}
+
+    load_dotenv()
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise ValueError("OpenAI API key not found.")
+
+    llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai_api_key)
+
+    # The correct misinformation
+    # Only 1 incorrect statement
+    correct_misinformation = study_narrative.misinformation[0]
+
+    for player, data in player_answers.items():
+        answer = data['answer']
+        response_time = data['response_time']
+
+        # correct/incorrect grading
+        prompt = f"""
+        You are an expert grader. Check if the player's answer seems to understand/identify the incorrect statement from the narrative. It doesn't have to be an exact match but there should be evidence of understanding. Provide a score of 1 for correct and 0 for incorrect.
+
+        Incorrect statement: {correct_misinformation}
+        Player's answer: {answer}
+
+        Your response should follow this structure:
+        Final Score: [0 or 1]
+
+        For example:
+        Final Score: 1
+        """
+        print(f"Prompt for player {player}:\n{prompt}")
+
+        try:
+            response = llm.invoke(prompt)
+            response_text = response.content.strip()
+            print(f"Response for player {player}:\n{response_text}")
+
+            # extract score after 'Final Score:'
+            score_match = re.search(
+                r"(Final Score:)\s*\**(\d)\**", response_text)
+            if score_match:
+                # 1 for correct, 0 for incorrect
+                correctness_score = float(score_match.group(2))
+            else:
+                correctness_score = 0  # default to 0 if no valid score found
+
+        except Exception as e:
+            print(f"Error grading answer for player {player}: {e}")
+            correctness_score = 0  # default to 0 in case of error
+
+        raw_scores[player] = correctness_score
+
+    # adjust scores based on response time for correct answers ONLY
+    min_time = min([player_answers[player]['response_time']
+                   for player in raw_scores])
+    max_time = max([player_answers[player]['response_time']
+                   for player in raw_scores])
+
+    for player, score in raw_scores.items():
+        time = player_answers[player]['response_time']
+        if score == 1:  # apply time adjustment for correct answers
+            normalized_time = (max_time - time) / (max_time -
+                                                   min_time) if max_time != min_time else 1.0
+            time_adjustment = normalized_time * time_weight
+            final_score = score + time_adjustment * score
+        else:
+            final_score = score  # incorrect answers keep their score of 0
+
+        final_scores[player] = final_score
+
+    return raw_scores, final_scores
