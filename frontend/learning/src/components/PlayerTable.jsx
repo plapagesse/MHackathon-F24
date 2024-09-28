@@ -2,7 +2,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 
-function PlayerTable(players, setPlayers, onStartGame) {
+function PlayerTable({players, setPlayers, onStartGame}) {
   const [isHost, setIsHost] = useState(true); // Assume the host for now, but this could be dynamic
   const [playerName, setPlayerName] = useState(""); // Store the current player's name
   const [nameEntered, setNameEntered] = useState(false); // Track if a player has entered their name
@@ -50,7 +50,6 @@ function PlayerTable(players, setPlayers, onStartGame) {
     }
   };
 
-  console.log(players);
   return (
     <div>
       {/* Display join code for host and other joined players */}
