@@ -3,6 +3,8 @@ import os
 import random
 from typing import List
 
+from dotenv import load_dotenv
+
 import pdfplumber
 from docx import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -94,6 +96,7 @@ def process_document(content: bytes, filename: str, generation_type: str) -> Lis
 def generate_flashcards_from_chunks(chunks: List[str]) -> List[StudyQuestion]:
 
     # Initialize the LLM (ensure the OpenAI API key is set)
+    load_dotenv()
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
         raise ValueError(
@@ -148,6 +151,8 @@ Questions:
 
 
 def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
+
+    load_dotenv()
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
         raise ValueError("OpenAI API key not found.")
@@ -168,12 +173,17 @@ def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
         1. <incorrect statement>
         2. <incorrect statement>
     """
-    response = llm.invoke({"prompt": prompt_template})
-    narrative_text = response['text']
+    response = llm.invoke(prompt_template)
+    narrative_text = response.content
+
+    # print("RAW RESPONSE: ", narrative_text)
 
     narrative_parts = narrative_text.split("Incorrect statements:")
     narrative = narrative_parts[0].strip()
     incorrect_statements = [line.strip()
                             for line in narrative_parts[1].strip().split("\n")]
+
+    print("narrative part", narrative)
+    print("misinfo", incorrect_statements)
 
     return StudyNarrative(narrative=narrative, misinformation=incorrect_statements)
