@@ -1,7 +1,8 @@
 import io
 import os
 import random
-from typing import List
+import re
+from typing import List, Dict
 
 from dotenv import load_dotenv
 
@@ -187,3 +188,109 @@ def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
     print("misinfo", incorrect_statements)
 
     return StudyNarrative(narrative=narrative, misinformation=incorrect_statements)
+
+
+def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: StudyNarrative, max_time: float = 60.0, time_weight: float = 0.2, score_threshold: float = 1.0) -> Dict[str, float]:
+    """
+    Grade players' answers by comparing them to the misinformation in the StudyNarrative object using OpenAI.
+
+    Args:
+        player_answers (Dict[str, str]): A dictionary where the key is the player's name/id and the value is their answer.
+        study_narrative (StudyNarrative): The StudyNarrative object containing the correct misinformation.
+
+    Returns:
+        Dict[str, float]: A dictionary with player ids/names as keys and their score as values.
+    """
+    raw_scores = {}
+
+    load_dotenv()
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise ValueError("OpenAI API key not found.")
+
+    llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai_api_key)
+
+    correct_misinformation = study_narrative.misinformation
+
+    for player, answer in player_answers.items():
+        prompt = f"""
+        You are an expert grader. Compare the player's answer to the list of correct misinformation. Give a score out of 10 based on how close the player's answer is. Please provide only the score in the following format:
+
+        Correct misinformation: {correct_misinformation}
+        Player's answer: {answer}
+
+        Your response should follow this structure:
+        Final Score: [number]
+
+        For example:
+        Final Score: 7
+        """
+        print(f"Prompt for player {player}:\n{prompt}")
+
+        try:
+            response = llm.invoke(prompt)
+            response_text = response.content.strip()
+
+            print(f"Response for player {player}: {response_text}")
+
+            # search for the score after "Final Score:" or "Score:" and ignore extra formatting like "/10"
+            score_match = re.search(
+                r"(Final Score:|Score:)\s*\**(\d+)\**", response_text)
+
+            if score_match:
+                # extract the numeric score after "Score:"
+                score = float(score_match.group(2))
+            else:
+                score = 0  # default to 0 if no valid score found
+
+        except Exception as e:
+            print(f"Error grading answer for player {player}: {e}")
+            score = 0  # default to 0 in case of error
+
+        raw_scores[player] = score
+
+    final_scores = {}
+    player_list = list(raw_scores.keys())
+
+    # find the minimum and maximum response times for scaling
+    min_time = min([player_answers[player]['response_time']
+                   for player in raw_scores])
+    max_time = max([player_answers[player]['response_time']
+                   for player in player_list])
+
+    # compare all pairs of players to see whose scores are close to each other(within the threshold)
+    for i in range(len(player_list)):
+        player_i = player_list[i]
+        score_i = raw_scores[player_i]
+        time_i = player_answers[player_i]['response_time']
+
+        final_score_i = score_i
+
+        for j in range(i + 1, len(player_list)):
+            player_j = player_list[j]
+            score_j = raw_scores[player_j]
+            time_j = player_answers[player_j]['response_time']
+
+            if abs(score_i - score_j) <= score_threshold:
+                # apply time adjustment --- faster response improves the score more strongly
+                normalized_time_i = (
+                    max_time - time_i) / (max_time - min_time) if max_time != min_time else 1.0
+                normalized_time_j = (
+                    max_time - time_j) / (max_time - min_time) if max_time != min_time else 1.0
+
+                # faster player gets bigger score boost
+                time_adjustment_i = normalized_time_i * time_weight
+                time_adjustment_j = normalized_time_j * time_weight
+
+                final_score_i = score_i + time_adjustment_i * score_i
+                final_score_j = score_j + time_adjustment_j * score_j
+
+                # updating final scores
+                final_scores[player_i] = final_score_i
+                final_scores[player_j] = final_score_j
+
+        # if player doesn't have any close competitor for raw response quality, just use raw score
+        if player_i not in final_scores:
+            final_scores[player_i] = score_i
+
+    return raw_scores, final_scores
