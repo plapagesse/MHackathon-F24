@@ -10,7 +10,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-from app.schemas import StudyQuestion
+from app.schemas import StudyQuestion, StudyNarrative
 
 # from langchain_ollama import ChatOllama
 
@@ -55,7 +55,7 @@ def extract_text_from_docx(content: bytes) -> str:
 
 
 # Function to process document and generate flashcards (multiple choice questions)
-def process_document(content: bytes, filename: str) -> List[StudyQuestion]:
+def process_document(content: bytes, filename: str, generation_type: str) -> List[StudyQuestion]:
     """
     Process the input document and generate multiple-choice flashcards.
 
@@ -81,6 +81,17 @@ def process_document(content: bytes, filename: str) -> List[StudyQuestion]:
         chunk_overlap=50,  # To retain context between chunks
     )
     documents = text_splitter.split_text(text)
+
+    if generation_type == "flashcards":
+        return generate_flashcards_from_chunks(documents)
+    elif generation_type == "narrative":
+        return generate_narrative_with_misinformation(" ".join(documents))
+    else:
+        raise ValueError(
+            "Unsupported question/challenge type. Current options: 'flashcards', 'narrative'.")
+
+
+def generate_flashcards_from_chunks(chunks: List[str]) -> List[StudyQuestion]:
 
     # Initialize the LLM (ensure the OpenAI API key is set)
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -118,7 +129,7 @@ Questions:
     study_questions = []
 
     # Process each document chunk and generate flashcards
-    for chunk in documents:
+    for chunk in chunks:
         try:
             # Generate the questions for each chunk
             result = chain.invoke({"chunk": chunk})
@@ -134,3 +145,35 @@ Questions:
     random.shuffle(study_questions)
 
     return study_questions
+
+
+def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise ValueError("OpenAI API key not found.")
+
+    llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai_api_key)
+
+    prompt_template = f"""
+        You are an expert educational content creator. Given the following content, create a flowing narrative explanation of the subject with 3-5 intentionally incorrect statements embedded.
+        The players will need to identify these incorrect statements. List the incorrect statements at the end.
+
+        Content: {content}
+
+        Format:
+        Narrative:
+        [narrative here]
+
+        Incorrect statements:
+        1. <incorrect statement>
+        2. <incorrect statement>
+    """
+    response = llm.invoke({"prompt": prompt_template})
+    narrative_text = response['text']
+
+    narrative_parts = narrative_text.split("Incorrect statements:")
+    narrative = narrative_parts[0].strip()
+    incorrect_statements = [line.strip()
+                            for line in narrative_parts[1].strip().split("\n")]
+
+    return StudyNarrative(narrative=narrative, misinformation=incorrect_statements)
