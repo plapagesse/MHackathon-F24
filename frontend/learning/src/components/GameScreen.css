@@ -1,0 +1,32 @@
+/* src/components/GameScreen.css */
+.time-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #ccc;
+    margin-bottom: 20px;
+  }
+  
+  .time-remaining {
+    height: 100%;
+    background-color: #00FF00;
+    transition: width 1s linear;
+  }
+
+
+
+  /* Players list positioned at the top left */
+.players-container {
+    position: absolute; /* Make it float relative to the container */
+    top: 10px;
+    left: 100px;
+  }
+  
+  .players-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .players-list li {
+    font-weight: bold;
+    margin: 5px 0;
+  }

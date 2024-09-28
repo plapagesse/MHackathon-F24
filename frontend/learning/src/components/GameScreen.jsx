@@ -1,6 +1,7 @@
 // src/components/GameScreen.jsx
-import axios from "axios";
 import React, { useEffect, useState } from "react";
+import './GameScreen.css';
+
 
 const GameScreen = ({ players, onGameEnd }) => {
   const [timeLeft, setTimeLeft] = useState(60); // Assuming 60 seconds for now
@@ -22,8 +23,14 @@ const GameScreen = ({ players, onGameEnd }) => {
   useEffect(() => {
     const fetchParagraphs = async () => {
       try {
-        const response = await axios.get("/api/get-paragraphs"); // Change the endpoint as needed
-        setParagraphs(response.data.paragraphs); // Assume the API returns a 'paragraphs' array
+        // const response = await axios.get("/api/get-paragraphs"); // Change the endpoint as needed
+        const dummyParagraphs = [
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+          "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+          "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+          "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore."
+        ];
+        setParagraphs(dummyParagraphs); // Assume the API returns a 'paragraphs' array
       } catch (error) {
         console.error("Error fetching paragraphs:", error);
       }
@@ -40,10 +47,12 @@ const GameScreen = ({ players, onGameEnd }) => {
     }
   };
 
+
+  console.log(players)
   return (
     <div className="game-screen">
-      {/* Time Bar */}
-      <div className="time-bar">
+    {/* Time Bar */}
+    <div className="time-bar">
         <div className="time-remaining" style={{ width: `${timeLeft}%` }}></div>
       </div>
 
@@ -51,9 +60,8 @@ const GameScreen = ({ players, onGameEnd }) => {
       <div className="player-scores">
         <ul>
           {players.map((player, index) => (
-            <li key={index}>
-              {player.name}: {player.score}
-            </li>
+            <li key={index}>{player} : {0} </li>
+            
           ))}
         </ul>
       </div>
