@@ -1,5 +1,5 @@
 /* src/components/GameScreen.css */
-.time-bar {
+/* .time-bar {
     width: 100%;
     height: 20px;
     background-color: #ccc;
@@ -10,13 +10,13 @@
     height: 100%;
     background-color: #00FF00;
     transition: width 1s linear;
-  }
+  } */
 
 
 
   /* Players list positioned at the top left */
-.players-container {
-    position: absolute; /* Make it float relative to the container */
+/* .players-container {
+    position: absolute; 
     top: 10px;
     left: 100px;
   }
@@ -29,4 +29,149 @@
   .players-list li {
     font-weight: bold;
     margin: 5px 0;
+  } */
+
+/* NEW */
+
+/* Time Bar - Make it colorful and fun */
+.time-bar {
+  width: 100%;
+  height: 20px;
+  background-color: #f5f5f5;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.time-remaining {
+  height: 100%;
+  transition: width 1s linear, background-color 0.5s ease-in-out;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  background-color: green; /* Initial color */
+}
+
+/* Players List - Make it fun and animated */
+.player-scores ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  margin-bottom: 20px;
+  margin-right: 1000px;
+  align-items: flex-start;
+}
+
+.player-scores li {
+  font-weight: bold;
+  background-color: #e1f5fe;
+  padding: 10px 20px;
+  border-radius: 15px;
+  font-size: 1.2rem;
+  color: #444;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease-in-out;
+  animation: player-bounce 2s infinite ease-in-out;
+}
+
+.player-scores li:hover {
+  transform: scale(1.1);
+  background-color: #81d4fa;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes player-bounce {
+  0%, 100% {
+      transform: translateY(0);
   }
+  50% {
+      transform: translateY(-5px);
+  }
+}
+
+/* Paragraphs - Centered and fun */
+.paragraphs-container {
+  background-color: #fff3e0;
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  text-align: left;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.paragraph-chunk {
+  font-size: 1.5rem;
+  color: #444;
+  margin-bottom: 20px;
+  line-height: 1.6;
+  animation: paragraph-bubble 3s ease-in-out infinite;
+}
+
+@keyframes paragraph-bubble {
+  0%, 100% {
+      transform: scale(1);
+  }
+  50% {
+      transform: scale(1.02);
+  }
+}
+
+/* Chat Box - Make it bubbly */
+.chat-box {
+  background-color: #ffeb3b;
+  padding: 15px;
+  border-radius: 20px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.chat-messages {
+  max-height: 150px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.chat-messages p {
+  background-color: #fce4ec;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  color: #555;
+}
+
+input[type="text"] {
+  padding: 10px;
+  border: 2px solid #e91e63;
+  border-radius: 10px;
+  font-size: 1rem;
+  width: 75%;
+  margin-right: 10px;
+}
+
+button[type="submit"] {
+  padding: 10px 20px;
+  background-color: #e91e63;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out, transform 0.2s;
+}
+
+button[type="submit"]:hover {
+  background-color: #ff6090;
+  transform: scale(1.05);
+}
+
+

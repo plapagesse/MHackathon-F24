@@ -4,7 +4,7 @@ import './GameScreen.css';
 
 
 const GameScreen = ({ players, onGameEnd }) => {
-  const [timeLeft, setTimeLeft] = useState(60); // Assuming 60 seconds for now
+  const [timeLeft, setTimeLeft] = useState(20); // Assuming 60 seconds for now
   const [paragraphs, setParagraphs] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState("");
@@ -47,14 +47,27 @@ const GameScreen = ({ players, onGameEnd }) => {
     }
   };
 
+  // calculate color based on time left
+
+  const getTimeBarColor = () => {
+    if (timeLeft > 15) return "green";
+    if (timeLeft > 10) return "orange";
+    if (timeLeft > 5) return "yellow";
+    return "red";
+  };
+
 
   console.log(players)
   return (
     <div className="game-screen">
     {/* Time Bar */}
     <div className="time-bar">
-        <div className="time-remaining" style={{ width: `${timeLeft}%` }}></div>
-      </div>
+        <div className="time-remaining" 
+        style={{
+           width: `${(timeLeft / 60)*100}%`,
+           backgroundColor: getTimeBarColor()
+           }}></div>
+    </div>
 
       {/* Player Scores */}
       <div className="player-scores">
