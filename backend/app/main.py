@@ -63,11 +63,11 @@ async def upload_file(file: UploadFile = File(...)):
 
     # Offload blocking processing to thread pool
     loop = asyncio.get_event_loop()
-    study_questions = await loop.run_in_executor(
-        executor, process_document, content, file.filename
+    generated_content = await loop.run_in_executor(
+        executor, process_document, content, file.filename, "narrative"
     )
-    print(study_questions)
-    return StudyQuestionResponse(study_questions=study_questions)
+    print(generated_content)
+    return StudyQuestionResponse(study_narrative=generated_content)
 
 
 @app.post("/create-lobby")
