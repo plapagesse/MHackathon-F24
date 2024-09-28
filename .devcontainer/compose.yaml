@@ -1,0 +1,19 @@
+services:
+  devcontainer:
+    env_file: ../.env
+    image: mcr.microsoft.com/devcontainers/python:3.11
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:

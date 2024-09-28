@@ -6,3 +6,4 @@ langchain
 pdfplumber
 python-docx
 langchain_openai
+aioredis[asyncio]
