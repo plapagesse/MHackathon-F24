@@ -59,15 +59,17 @@ const GameScreen = ({ players, onGameEnd }) => {
 
   console.log(players)
   return (
-   <span>
-    {/* Time Bar */}
-    <div className="time-bar">
+    <div>
+      <div className="time-bar">
         <div className="time-remaining" 
         style={{
            width: `${(timeLeft / 60)*100}%`,
            backgroundColor: getTimeBarColor()
            }}></div>
     </div>
+    <div className="game-screen">
+    {/* Time Bar */}
+
 
       {/* Player Scores */}
       <div className="player-scores">
@@ -105,8 +107,8 @@ const GameScreen = ({ players, onGameEnd }) => {
           <button type="submit">Send</button>
         </form>
       </div>
-      </span>
-    
+    </div>
+    </div>
   );
 };
 
