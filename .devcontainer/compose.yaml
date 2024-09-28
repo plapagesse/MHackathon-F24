@@ -1,7 +1,10 @@
 services:
   devcontainer:
     env_file: ../.env
-    image: mcr.microsoft.com/devcontainers/python:3.11
+    # image: mcr.microsoft.com/devcontainers/python:3.11
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
       - ..:/workspaces:cached
     command: sleep infinity

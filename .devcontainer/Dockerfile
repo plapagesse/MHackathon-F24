@@ -1,4 +1,5 @@
 FROM mcr.microsoft.com/devcontainers/python:3.11
 
-RUN echo net.ipv6.conf.all.disable_ipv6 = 1 >> /etc/sysctl.conf && \
-    echo net.ipv6.conf.default.disable_ipv6 = 1 >> /etc/sysctl.conf
+RUN wget -qO /usr/local/bin/websocat https://github.com/vi/websocat/releases/latest/download/websocat.x86_64-unknown-linux-musl && \
+    chmod a+x /usr/local/bin/websocat
+
