@@ -161,8 +161,8 @@ def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
     llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai_api_key)
 
     prompt_template = f"""
-        You are an expert educational content creator. Given the following content, create a flowing narrative explanation of the subject with 3-5 intentionally incorrect statements embedded.
-        The players will need to identify these incorrect statements. List the incorrect statements at the end.
+        You are an expert educational content creator. Given the following content, create a flowing narrative explanation of the subject with 1 intentionally incorrect statement embedded.
+        The players will need to identify this incorrect statement. List the incorrect statement at the end.
 
         Content: {content}
 
@@ -170,16 +170,15 @@ def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
         Narrative:
         [narrative here]
 
-        Incorrect statements:
+        Incorrect statement:
         1. <incorrect statement>
-        2. <incorrect statement>
     """
     response = llm.invoke(prompt_template)
     narrative_text = response.content
 
     # print("RAW RESPONSE: ", narrative_text)
 
-    narrative_parts = narrative_text.split("Incorrect statements:")
+    narrative_parts = narrative_text.split("Incorrect statement:")
     narrative = narrative_parts[0].strip()
     incorrect_statements = [line.strip()
                             for line in narrative_parts[1].strip().split("\n")]
@@ -190,18 +189,21 @@ def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
     return StudyNarrative(narrative=narrative, misinformation=incorrect_statements)
 
 
-def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: StudyNarrative, max_time: float = 60.0, time_weight: float = 0.2, score_threshold: float = 1.0) -> Dict[str, float]:
+def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: StudyNarrative, max_time: float = 60.0, time_weight: float = 0.2) -> Dict[str, float]:
     """
-    Grade players' answers by comparing them to the misinformation in the StudyNarrative object using OpenAI.
+    Grade players' answers as correct (1) or incorrect (0), and adjust the score based on response time for correct answers.
 
     Args:
-        player_answers (Dict[str, str]): A dictionary where the key is the player's name/id and the value is their answer.
+        player_answers (Dict[str, Dict[str, float]]): A dictionary where the key is the player's name/id and the value is their answer and response time.
         study_narrative (StudyNarrative): The StudyNarrative object containing the correct misinformation.
 
     Returns:
-        Dict[str, float]: A dictionary with player ids/names as keys and their score as values.
+        Tuple (raw_scores: Dict[str, float], final_scores: Dict[str, float]): 
+        - raw_scores: 1 if the answer is correct, 0 if incorrect.
+        - final_scores: Adjusted scores based on correctness and response time.
     """
     raw_scores = {}
+    final_scores = {}
 
     load_dotenv()
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -210,87 +212,65 @@ def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: St
 
     llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai_api_key)
 
-    correct_misinformation = study_narrative.misinformation
+    # The correct misinformation
+    # Only 1 incorrect statement
+    correct_misinformation = study_narrative.misinformation[0]
 
-    for player, answer in player_answers.items():
+    for player, data in player_answers.items():
+        answer = data['answer']
+        response_time = data['response_time']
+
+        # correct/incorrect grading
         prompt = f"""
-        You are an expert grader. Compare the player's answer to the list of correct misinformation. Give a score out of 10 based on how close the player's answer is. Please provide only the score in the following format:
+        You are an expert grader. Check if the player's answer seems to understand/identify the incorrect statement from the narrative. It doesn't have to be an exact match but there should be evidence of understanding. Provide a score of 1 for correct and 0 for incorrect.
 
-        Correct misinformation: {correct_misinformation}
+        Incorrect statement: {correct_misinformation}
         Player's answer: {answer}
 
         Your response should follow this structure:
-        Final Score: [number]
+        Final Score: [0 or 1]
 
         For example:
-        Final Score: 7
+        Final Score: 1
         """
         print(f"Prompt for player {player}:\n{prompt}")
 
         try:
             response = llm.invoke(prompt)
             response_text = response.content.strip()
+            print(f"Response for player {player}:\n{response_text}")
 
-            print(f"Response for player {player}: {response_text}")
-
-            # search for the score after "Final Score:" or "Score:" and ignore extra formatting like "/10"
+            # extract score after 'Final Score:'
             score_match = re.search(
-                r"(Final Score:|Score:)\s*\**(\d+)\**", response_text)
-
+                r"(Final Score:)\s*\**(\d)\**", response_text)
             if score_match:
-                # extract the numeric score after "Score:"
-                score = float(score_match.group(2))
+                # 1 for correct, 0 for incorrect
+                correctness_score = float(score_match.group(2))
             else:
-                score = 0  # default to 0 if no valid score found
+                correctness_score = 0  # default to 0 if no valid score found
 
         except Exception as e:
             print(f"Error grading answer for player {player}: {e}")
-            score = 0  # default to 0 in case of error
+            correctness_score = 0  # default to 0 in case of error
 
-        raw_scores[player] = score
+        raw_scores[player] = correctness_score
 
-    final_scores = {}
-    player_list = list(raw_scores.keys())
-
-    # find the minimum and maximum response times for scaling
+    # adjust scores based on response time for correct answers ONLY
     min_time = min([player_answers[player]['response_time']
                    for player in raw_scores])
     max_time = max([player_answers[player]['response_time']
-                   for player in player_list])
+                   for player in raw_scores])
 
-    # compare all pairs of players to see whose scores are close to each other(within the threshold)
-    for i in range(len(player_list)):
-        player_i = player_list[i]
-        score_i = raw_scores[player_i]
-        time_i = player_answers[player_i]['response_time']
+    for player, score in raw_scores.items():
+        time = player_answers[player]['response_time']
+        if score == 1:  # apply time adjustment for correct answers
+            normalized_time = (max_time - time) / (max_time -
+                                                   min_time) if max_time != min_time else 1.0
+            time_adjustment = normalized_time * time_weight
+            final_score = score + time_adjustment * score
+        else:
+            final_score = score  # incorrect answers keep their score of 0
 
-        final_score_i = score_i
-
-        for j in range(i + 1, len(player_list)):
-            player_j = player_list[j]
-            score_j = raw_scores[player_j]
-            time_j = player_answers[player_j]['response_time']
-
-            if abs(score_i - score_j) <= score_threshold:
-                # apply time adjustment --- faster response improves the score more strongly
-                normalized_time_i = (
-                    max_time - time_i) / (max_time - min_time) if max_time != min_time else 1.0
-                normalized_time_j = (
-                    max_time - time_j) / (max_time - min_time) if max_time != min_time else 1.0
-
-                # faster player gets bigger score boost
-                time_adjustment_i = normalized_time_i * time_weight
-                time_adjustment_j = normalized_time_j * time_weight
-
-                final_score_i = score_i + time_adjustment_i * score_i
-                final_score_j = score_j + time_adjustment_j * score_j
-
-                # updating final scores
-                final_scores[player_i] = final_score_i
-                final_scores[player_j] = final_score_j
-
-        # if player doesn't have any close competitor for raw response quality, just use raw score
-        if player_i not in final_scores:
-            final_scores[player_i] = score_i
+        final_scores[player] = final_score
 
     return raw_scores, final_scores
