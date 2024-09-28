@@ -57,7 +57,6 @@ function PlayerTable({players, setPlayers, onStartGame}) {
 
       <h2>Players</h2>
       <ul>
-        {console.log(players)}
         {players.map((player, index) => (
           <li key={index}>{player}</li>
         ))}

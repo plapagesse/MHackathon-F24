@@ -20,20 +20,33 @@ The resulting data summary provided insights into the patterns of stress placeme
 
 In summary, V2-deletion showcases the dynamic nature of language and the subtle ways in which stress patterns influence pronunciation. This area of study not only enriches our understanding of phonetics but also highlights the complexities involved in language processing. """,
         misinformation=[
-            '**', '1. The first syllable must have secondary stress while the second syllable does not.']
+            "**",
+            "1. The first syllable must have secondary stress while the second syllable does not.",
+        ],
     )
 
     # sample player answers
     player_answers = {
-        "Alice": {"answer": "The first syllable in V2-deletion has primary stress, not secondary stress.", "response_time": 45.0},
-        "Bob": {"answer": "V2-deletion examples involve main stress on the first syllable, not secondary stress as stated.", "response_time": 20.0},
-        "Charlie": {"answer": "The first syllable in V2-deletion has no stress while the second syllable carries the stress.", "response_time": 20.0},
-        "Diana": {"answer": "The second syllable is stressed in V2-deletion, which is why the first vowel is deleted.", "response_time": 35.0}
+        "Alice": {
+            "answer": "The first syllable in V2-deletion has primary stress, not secondary stress.",
+            "response_time": 45.0,
+        },
+        "Bob": {
+            "answer": "V2-deletion examples involve main stress on the first syllable, not secondary stress as stated.",
+            "response_time": 20.0,
+        },
+        "Charlie": {
+            "answer": "The first syllable in V2-deletion has no stress while the second syllable carries the stress.",
+            "response_time": 20.0,
+        },
+        "Diana": {
+            "answer": "The second syllable is stressed in V2-deletion, which is why the first vowel is deleted.",
+            "response_time": 35.0,
+        },
     }
 
     # call grading function
-    raw_scores, scores = grade_player_raw_answers(
-        player_answers, study_narrative)
+    raw_scores, scores = grade_player_raw_answers(player_answers, study_narrative)
     print("RAW SCORES")
 
     for player, score in raw_scores.items():
@@ -42,7 +55,7 @@ In summary, V2-deletion showcases the dynamic nature of language and the subtle 
     print("SCORES WITH TIMING")
 
     for player, score in scores.items():
-        print(f"{player}: {score}/10")
+        print(f"{player}: {score}")
 
 
 if __name__ == "__main__":
