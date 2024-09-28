@@ -85,7 +85,7 @@ async def create_lobby(request: CreateLobbyRequest):
     await conn.sadd(f"lobby:{lobby_id}:participants", creator_id)
     await conn.hset(
         f"lobby:{lobby_id}:players", creator_id, "Host"
-    )  # Optionally, name the host as "Host"
+    )  # Name the host as "Host"
 
     return CreateLobbyResponse(lobby_id=lobby_id, creator_id=creator_id)
 
@@ -114,7 +114,7 @@ async def get_participants(lobby_id: str):
     participants = await conn.smembers(lobby_key)
     players = []
     for user_id in participants:
-        player_name = await conn.hget(f"{lobby_key}:players", user_id)
+        player_name = await conn.hget(f"lobby:{lobby_id}:players", user_id)
         players.append(player_name if player_name else "Unknown Player")
 
     return {"players": players}
@@ -220,7 +220,7 @@ async def websocket_receiver(websocket: WebSocket, lobby_id: str, user_id: str):
         print(f"Error in websocket_receiver: {e}")
 
 
-@app.websocket("/ws/{lobby_id}")
+@app.websocket("/lobby/{lobby_id}")
 async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
     await websocket.accept()
 
