@@ -28,7 +28,7 @@ function App() {
   };
 
   const handleRestartGame = () => {
-    setIsGameOver(false);
+    setIsGameOver(true);
     setPlayers([]);
     setTopic("");
   };
