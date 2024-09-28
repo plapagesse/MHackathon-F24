@@ -2,7 +2,6 @@ import asyncio
 import os
 import re
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 
 import redis.asyncio as redis
 from app.schemas import StudyQuestionResponse
@@ -49,25 +48,6 @@ app.add_middleware(
 )
 
 LOBBY_ID_REGEX = re.compile(r"^[a-f0-9]{32}$")
-
-# Thread pool for blocking operations
-executor = ThreadPoolExecutor()
-
-
-@app.post("/upload", response_model=StudyQuestionResponse)
-async def upload_file(file: UploadFile = File(...)):
-    if not file.filename.endswith((".pdf", ".docx", ".txt")):
-        raise HTTPException(status_code=400, detail="Unsupported file type.")
-
-    content = await file.read()
-
-    # Offload blocking processing to thread pool
-    loop = asyncio.get_event_loop()
-    generated_content = await loop.run_in_executor(
-        executor, process_document, content, file.filename, "narrative"
-    )
-    print(generated_content)
-    return StudyQuestionResponse(study_narrative=generated_content)
 
 
 @app.post("/create-lobby")
