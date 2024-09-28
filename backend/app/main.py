@@ -201,26 +201,18 @@ async def websocket_receiver(websocket: WebSocket, lobby_id: str, user_id: str):
     try:
         while True:
             data = await websocket.receive_text()
-            # Handle heartbeat or other message types if needed
-            # For this implementation, we rely on the backend to handle messages
+            # Handle messages like heartbeat if needed
             pass
     except WebSocketDisconnect:
-        # Optionally, notify others that the player has left
+        # Notify via Pub/Sub that the player has left
         player_name = await conn.hget(f"lobby:{lobby_id}:players", user_id)
         await conn.publish(
             f"channel:{lobby_id}",
-            json.dumps(
-                {
-                    "type": "player_left",
-                    "playerName": player_name if player_name else "Unknown Player",
-                }
-            ),
+            json.dumps({"type": "player_left", "playerName": player_name}),
         )
-    except Exception as e:
-        print(f"Error in websocket_receiver: {e}")
 
 
-@app.websocket("/lobby/{lobby_id}")
+@app.websocket("/ws/{lobby_id}")
 async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
     await websocket.accept()
 
@@ -240,62 +232,28 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
         await websocket.close(code=1008, reason="Lobby does not exist")
         return
 
-    # Add user to the lobby's participants set
-    await conn.sadd(f"{lobby_key}:participants", user_id)
+    # Create Pub/Sub connection and subscribe to the lobby channel
+    pubsub_conn = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    pubsub = pubsub_conn.pubsub()
+    await pubsub.subscribe(f"channel:{lobby_id}")
 
-    try:
-        # Create a separate Pub/Sub connection for subscribing
-        pubsub_conn = redis.Redis(
-            host=REDIS_HOST, port=REDIS_PORT, decode_responses=True
-        )
-        pubsub = pubsub_conn.pubsub()
-        await pubsub.subscribe(f"channel:{lobby_id}")
+    async def send_messages():
+        async for message in pubsub.listen():
+            if message["type"] == "message":
+                await websocket.send_text(message["data"])
 
-        async def send_messages():
-            async for message in pubsub.listen():
-                if message["type"] == "message":
-                    # Ensure that the message is a JSON string
-                    if isinstance(message["data"], str):
-                        await websocket.send_text(message["data"])
-                    else:
-                        # Serialize to JSON if it's a dictionary or other type
-                        await websocket.send_text(json.dumps(message["data"]))
+    receive_task = asyncio.create_task(websocket_receiver(websocket, lobby_id, user_id))
+    send_task = asyncio.create_task(send_messages())
 
-        receive_task = asyncio.create_task(
-            websocket_receiver(websocket, lobby_id, user_id)
-        )
-        send_task = asyncio.create_task(send_messages())
+    done, pending = await asyncio.wait(
+        [receive_task, send_task],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    for task in pending:
+        task.cancel()
 
-        done, pending = await asyncio.wait(
-            [receive_task, send_task],
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for task in pending:
-            task.cancel()
-
-    except WebSocketDisconnect:
-        pass
-    finally:
-        # Remove user from the lobby
-        await conn.srem(f"{lobby_key}:participants", user_id)
-        await pubsub.unsubscribe(f"channel:{lobby_id}")
-        await pubsub.close()
-        await pubsub_conn.close()
-
-        # Check if the user leaving is the creator
-        creator_id = await conn.hget(lobby_key, "creator")
-        if creator_id == user_id:
-            # Close lobby and notify participants
-            await conn.delete(lobby_key)
-            await conn.publish(
-                f"channel:{lobby_id}",
-                json.dumps(
-                    {
-                        "type": "lobby_closed",
-                        "message": "Lobby has been closed by the host.",
-                    }
-                ),
-            )
-            # Optionally, remove all participants
-            await conn.delete(f"{lobby_key}:participants")
-            await conn.delete(f"{lobby_key}:players")
+    # Clean up on disconnect
+    await pubsub.unsubscribe(f"channel:{lobby_id}")
+    await pubsub.close()
+    await pubsub_conn.close()
+    await conn.srem(f"{lobby_key}:participants", user_id)
