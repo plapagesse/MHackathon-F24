@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-const FileUpload = ({ setTopic }) => {
+const TopicUpload = ({ setTopic }) => {
   const [focus, setFocus] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -13,7 +13,7 @@ const FileUpload = ({ setTopic }) => {
     setLoading(true);
 
     try {
-      setTopic(true);
+      setTopic(focus);
     } catch (error) {
       console.error(error);
       alert("Error uploading file or generating study questions.");
@@ -42,4 +42,4 @@ const FileUpload = ({ setTopic }) => {
   );
 };
 
-export default FileUpload;
+export default TopicUpload;

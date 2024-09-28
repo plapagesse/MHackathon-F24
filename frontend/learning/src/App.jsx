@@ -6,7 +6,7 @@ import QuestionsTable from "./components/QuestionsTable";
 import PlayerTable from "./components/PlayerTable";
 
 function App() {
-  const [topic, setTopic] = useState(false);
+  const [topic, setTopic] = useState("");
   const [players, setPlayers] = useState({ done: false });
 
   const handleDiscard = () => {
@@ -19,11 +19,7 @@ function App() {
         <h1>Ailusion</h1>
       </header>
       <main>
-        {!topic ? (
-          <TopicUpload setStudyQuestions={setTopic} />
-        ) : (
-          <PlayerTable />
-        )}
+        {topic === "" ? <TopicUpload setTopic={setTopic} /> : <PlayerTable />}
       </main>
     </div>
   );
