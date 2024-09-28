@@ -1,8 +1,9 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
 pydantic
 langchain
 pdfplumber
 python-docx
 langchain_openai
+redis
