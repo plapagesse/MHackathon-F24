@@ -4,7 +4,7 @@ import './GameScreen.css';
 
 
 const GameScreen = ({ players, onGameEnd }) => {
-  const [timeLeft, setTimeLeft] = useState(20); // Assuming 60 seconds for now
+  const [timeLeft, setTimeLeft] = useState(2000); // Assuming 60 seconds for now
   const [paragraphs, setParagraphs] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState("");
@@ -59,7 +59,7 @@ const GameScreen = ({ players, onGameEnd }) => {
 
   console.log(players)
   return (
-    <div className="game-screen">
+   <span>
     {/* Time Bar */}
     <div className="time-bar">
         <div className="time-remaining" 
@@ -105,7 +105,8 @@ const GameScreen = ({ players, onGameEnd }) => {
           <button type="submit">Send</button>
         </form>
       </div>
-    </div>
+      </span>
+    
   );
 };
 
