@@ -8,7 +8,6 @@
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts"
     }
-    // "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "customizations": {
     "vscode": {
@@ -16,28 +15,30 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.pylint",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "python.linting.enabled": true,
-        "python.linting.pylintEnabled": true,
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true
+        },
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter",
+          "editor.formatOnSave": true
+        },
+        "isort.args": ["--profile", "black"],
+        "python.formatting.provider": "none"
       }
     }
   },
   "postCreateCommand": {
     "pip-install": "pip install --user -r backend/requirements-dev.txt && cd frontend/learning",
     "npm-install": "cd frontend/learning && npm install"
-    // "disable-ipv6": "sysctl -w net.ipv6.conf.all.disable_ipv6=1"
   },
   "remoteUser": "vscode"
-  // "runArgs": [
-  //   // "--sysctl",
-  //   // "net.ipv6.conf.all.disable_ipv6=1",
-  //   "--env-file",
-  //   ".env"
-  // ]
 }
