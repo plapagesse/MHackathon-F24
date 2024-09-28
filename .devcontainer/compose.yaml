@@ -3,7 +3,7 @@ services:
     env_file: ../.env
     image: mcr.microsoft.com/devcontainers/python:3.11
     volumes:
-      - ..:/workspace:cached
+      - ..:/workspaces:cached
     command: sleep infinity
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1

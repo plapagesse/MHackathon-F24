@@ -2,7 +2,7 @@
   "name": "JavaScript and Python Dev Container",
   "dockerComposeFile": "compose.yaml",
   "service": "devcontainer",
-  "workspaceFolder": "/workspace",
+  "workspaceFolder": "/workspaces",
   "forwardPorts": [8000, 5173],
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
