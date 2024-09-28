@@ -2,8 +2,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 
-function PlayerTable() {
-  const [players, setPlayers] = useState([]);
+function PlayerTable(players, setPlayers, onStartGame) {
   const [isHost, setIsHost] = useState(true); // Assume the host for now, but this could be dynamic
   const [playerName, setPlayerName] = useState(""); // Store the current player's name
   const [nameEntered, setNameEntered] = useState(false); // Track if a player has entered their name
@@ -38,6 +37,7 @@ function PlayerTable() {
   const addPlayer = (name) => {
     if (!name.trim() || players.includes(name)) return;
 
+    const prevPlayers = players;
     setPlayers((prevPlayers) => [...prevPlayers, name]);
     setNameEntered(true); // Disable the input and button after the player enters their name
   };
@@ -45,10 +45,12 @@ function PlayerTable() {
   const startGame = () => {
     if (isHost) {
       console.log("Game started!");
+      onStartGame();
       // Add logic to start the game here
     }
   };
 
+  console.log(players);
   return (
     <div>
       {/* Display join code for host and other joined players */}
@@ -56,6 +58,7 @@ function PlayerTable() {
 
       <h2>Players</h2>
       <ul>
+        {console.log(players)}
         {players.map((player, index) => (
           <li key={index}>{player}</li>
         ))}
