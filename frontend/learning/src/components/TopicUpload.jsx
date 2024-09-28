@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-const FileUpload = ({ setStudyQuestions }) => {
+const FileUpload = ({ setTopic }) => {
   const [focus, setFocus] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -11,17 +11,9 @@ const FileUpload = ({ setStudyQuestions }) => {
 
   const handleUpload = async () => {
     setLoading(true);
-    const formData = new FormData();
-    formData.append("focus", focus);
 
     try {
-      // const response = await axios.post("/api/upload", formData, {
-      //   headers: { "Content-Type": "multipart/form-data" },
-      // });
-      // console.log(response.data.study_questions);
-      const myMap = new Map();
-      myMap.set("focus", focus);
-      setStudyQuestions(myMap);
+      setTopic(true);
     } catch (error) {
       console.error(error);
       alert("Error uploading file or generating study questions.");
@@ -34,7 +26,7 @@ const FileUpload = ({ setStudyQuestions }) => {
     <div>
       <input
         type="text"
-        placeholder="Enter focus (optional)"
+        placeholder="Enter Game focus"
         value={focus}
         onChange={handleFocusChange}
         style={{ marginLeft: "10px" }}
@@ -44,7 +36,7 @@ const FileUpload = ({ setStudyQuestions }) => {
         disabled={loading}
         style={{ marginLeft: "10px" }}
       >
-        {loading ? "Processing..." : "Upload and Generate Study Questions"}
+        {loading ? "Processing..." : "Start Lobby"}
       </button>
     </div>
   );

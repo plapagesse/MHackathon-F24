@@ -1,11 +1,13 @@
 // src/App.jsx
 import { useState } from "react";
 import "./App.css";
-import FileUpload from "./components/FileUpload";
+import TopicUpload from "./components/TopicUpload";
 import QuestionsTable from "./components/QuestionsTable";
+import PlayerTable from "./components/PlayerTable";
 
 function App() {
-  const [studyQuestions, setStudyQuestions] = useState([]);
+  const [topic, setTopic] = useState(false);
+  const [players, setPlayers] = useState({ done: false });
 
   const handleDiscard = () => {
     setStudyQuestions([]);
@@ -14,16 +16,13 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Study Questions Generator</h1>
+        <h1>Ailusion</h1>
       </header>
       <main>
-        {studyQuestions.length === 0 ? (
-          <FileUpload setStudyQuestions={setStudyQuestions} />
+        {!topic ? (
+          <TopicUpload setStudyQuestions={setTopic} />
         ) : (
-          <QuestionsTable
-            studyQuestions={studyQuestions}
-            onDiscard={handleDiscard}
-          />
+          <PlayerTable />
         )}
       </main>
     </div>
