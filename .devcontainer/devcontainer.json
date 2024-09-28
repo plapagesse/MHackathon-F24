@@ -26,11 +26,14 @@
       }
     }
   },
-  "postCreateCommand": "pip install --user -r backend/requirements-dev.txt",
+  "postCreateCommand": {
+    "pip-install": "pip install --user -r backend/requirements-dev.txt && cd frontend/learning",
+    "npm-install": "cd frontend/learning && npm install"
+  },
   "remoteUser": "vscode",
   "runArgs": [
-    "--sysctl",
-    "net.ipv6.conf.all.disable_ipv6=1",
+    // "--sysctl",
+    // "net.ipv6.conf.all.disable_ipv6=1",
     "--env-file",
     ".env"
   ]
