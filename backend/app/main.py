@@ -196,6 +196,12 @@ async def chat(lobby_id: str, message: ChatMessage):
     return {"detail": "Message sent"}
 
 
+import asyncio
+import json
+
+from fastapi import WebSocket, WebSocketDisconnect
+
+
 async def websocket_receiver(
     websocket: WebSocket, lobby_id: str, user_id: str, is_game_start: asyncio.Event
 ):
@@ -237,16 +243,30 @@ async def websocket_receiver(
                     ),
                 )
 
-            # Handle other messages if needed, such as player heartbeats, etc.
-
     except WebSocketDisconnect:
-        # Check if the disconnect was not a start game event
+        # Handle disconnect based on whether it's the host or a regular player
         if not is_game_start.is_set():
-            player_name = await conn.hget(f"lobby:{lobby_id}:players", user_id)
-            await conn.publish(
-                f"channel:{lobby_id}",
-                json.dumps({"type": "player_left", "playerName": player_name}),
-            )
+            lobby_key = f"lobby:{lobby_id}"
+            player_name = await conn.hget(f"{lobby_key}:players", user_id)
+            creator_id = await conn.hget(f"{lobby_key}", "creator")
+
+            # If the host disconnected ungracefully, close the lobby for everyone
+            if user_id == creator_id:
+                await conn.publish(
+                    f"channel:{lobby_id}",
+                    json.dumps(
+                        {
+                            "type": "lobby_closed",
+                            "message": "The host has disconnected. The lobby is closed.",
+                        }
+                    ),
+                )
+            else:
+                # Broadcast player left event for non-hosts
+                await conn.publish(
+                    f"channel:{lobby_id}",
+                    json.dumps({"type": "player_left", "playerName": player_name}),
+                )
 
 
 @app.websocket("/ws/{lobby_id}")
