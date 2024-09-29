@@ -6,6 +6,8 @@ import re
 import uuid
 
 import redis.asyncio as redis
+from app.schemas import Rounds
+from app.utils import generate_bullets_from_topic
 from fastapi import (
     Depends,
     FastAPI,
@@ -17,8 +19,6 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from schemas import Rounds
-from utils import generate_bullets_from_topic
 
 app = FastAPI()
 
