@@ -1,7 +1,7 @@
 # test_grading.py
 
 from app.schemas import StudyNarrative
-from app.utils import grade_player_raw_answers
+from app.utils import grade_individual_answer
 
 
 def main():
@@ -40,22 +40,18 @@ In summary, V2-deletion showcases the dynamic nature of language and the subtle 
             "response_time": 20.0,
         },
         "Diana": {
-            "answer": "The second syllable is stressed in V2-deletion, which is why the first vowel is deleted.",
+            "answer": "The second syllable is bluff.",
             "response_time": 35.0,
         },
     }
 
     # call grading function
-    raw_scores, scores = grade_player_raw_answers(player_answers, study_narrative)
-    print("RAW SCORES")
-
-    for player, score in raw_scores.items():
-        print(f"{player}: {score}/10")
-
-    print("SCORES WITH TIMING")
-
-    for player, score in scores.items():
-        print(f"{player}: {score}")
+    raw_scores = grade_individual_answer(
+        "The second syllable is bluff.",
+        study_narrative.narrative,
+        study_narrative.misinformation[1],
+    )
+    print(raw_scores)
 
 
 if __name__ == "__main__":
