@@ -1,4 +1,6 @@
 /* src/components/FileUpload.css */
+
+
 .upload-container {
   width: 90%;
   max-width: 600px;
@@ -48,4 +50,9 @@
 
 .upload-button:hover:not(:disabled) {
   background-color: #45a049;
+}
+
+.info-text {
+  width: 80vw;
+
 }

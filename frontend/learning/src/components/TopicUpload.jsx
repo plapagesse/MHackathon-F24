@@ -43,20 +43,27 @@ const TopicUpload = () => {
 
   return (
     <div>
-      <Cube isSmall={false} /> {}
-      <h2>Start a New Lobby</h2>
+
+      <span className="info-text"><marquee width="700"
+  height="200" >Can you see through the AI’s tricks? Test your intuition in Ailusion! Not everything is as it seems. Guess the AI's bluff and rise to the top! Is it fact or fiction? In Ailusion, your wits are the only thing standing between truth and deception. The AI is ready to deceive you. Can you call its bluff in time? Challenge your mind and spot the AI-generated lies in this thrilling game of deception! Blurring the lines between truth and illusion. Welcome to Ailusion—where only the sharpest players thrive! Ailusion: The game where AI challenges your perception of reality. Are you ready? Don’t let the AI fool you! Sharpen your skills and guess what’s real.</marquee> </span>
+
+
       <div>
+        <Cube isSmall={false} /> {}
+        <h2>Start a New Lobby</h2>
+        <div>
+        </div>
+        <input
+          type="text"
+          placeholder="Enter Game Topic"
+          value={topic}
+          onChange={handleTopicChange}
+          style={{ marginRight: "10px" }}
+        />
+        <button onClick={handleUpload} disabled={loading}>
+          {loading ? "Creating Lobby..." : "Start Lobby"}
+        </button>
       </div>
-      <input
-        type="text"
-        placeholder="Enter Game Topic"
-        value={topic}
-        onChange={handleTopicChange}
-        style={{ marginRight: "10px" }}
-      />
-      <button onClick={handleUpload} disabled={loading}>
-        {loading ? "Creating Lobby..." : "Start Lobby"}
-      </button>
     </div>
   );
 };
