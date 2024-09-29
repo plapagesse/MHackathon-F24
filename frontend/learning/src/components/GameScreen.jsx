@@ -19,6 +19,7 @@ const GameScreen = () => {
   const [isHost, setIsHost] = useState(false);
   const [scores, setScores] = useState({}); // Player scores
   const [hasGuessedCorrectly, setHasGuessedCorrectly] = useState(false); // Track if player guessed correctly
+  const [correctGuessCount, setCorrectGuessCount] = useState(0); // Track how many players have guessed correctly
 
   // Initialize userId and playerName from localStorage
   useEffect(() => {
@@ -110,6 +111,7 @@ const GameScreen = () => {
             setCurrentSubtopicIndex(0);
             setTimeLeft(60); // Start countdown for the first subtopic
             setHasGuessedCorrectly(false); // Reset correct guess state for each player
+            setCorrectGuessCount(0); // Reset correct guess count for the new round
             break;
           case "round_error":
             console.error("Error generating round:", parsedMessage.message);
@@ -137,9 +139,22 @@ const GameScreen = () => {
                 message: `${parsedMessage.playerName} got the answer!`,
               },
             ]);
+
             if (parsedMessage.playerName === playerName) {
               setHasGuessedCorrectly(true); // Set that the current player guessed correctly
             }
+
+            // Update correct guess count
+            setCorrectGuessCount((prevCount) => {
+              const newCount = prevCount + 1;
+
+              // If everyone has guessed correctly, set the timer to zero
+              if (newCount === players.length) {
+                setTimeLeft(0);
+              }
+
+              return newCount;
+            });
             break;
           case "lobby_closed":
             alert(
@@ -154,7 +169,7 @@ const GameScreen = () => {
         console.error("Error parsing WebSocket message:", error);
       }
     },
-    [userId, navigate, timeLeft, playerName]
+    [userId, navigate, timeLeft, playerName, players.length]
   );
 
   const sendMessage = useWebSocket(lobbyId, userId, handleIncomingMessage);
@@ -166,6 +181,7 @@ const GameScreen = () => {
       setTimeLeft(60); // Restart timer for the next subtopic
       setChatMessages([]); // Clear chat for the new round
       setHasGuessedCorrectly(false); // Reset correct guess state for the new subtopic
+      setCorrectGuessCount(0); // Reset correct guess count for the new subtopic
     } else {
       // End of the game
       onGameEnd();
