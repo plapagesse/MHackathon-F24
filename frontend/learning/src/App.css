@@ -72,8 +72,8 @@ main {
 
 .small-cube {
   position: fixed;
-  bottom: 40px;
-  right: 30px;
+  bottom: 20px;
+  left: 40px;
   width: 100px;
   height: 100px;
   transform-style: preserve-3d;

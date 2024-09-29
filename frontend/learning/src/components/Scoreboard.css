@@ -1,0 +1,72 @@
+/* src/components/Scoreboard.css */
+
+.scoreboard-container {
+    background-color: #f0f4f8;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  
+  .scoreboard-title {
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 30px;
+  }
+  
+  .player-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 30px 0;
+  }
+  
+  .player-item {
+    display: flex;
+    justify-content: space-between;
+    background-color: #67acc8;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .player-item:hover {
+    transform: scale(1.05);
+    background-color: #55a0b6;
+  }
+  
+  .player-rank {
+    font-weight: bold;
+    margin-right: 10px;
+  }
+  
+  .player-name {
+    flex: 1;
+    text-align: left;
+  }
+  
+  .player-score {
+    font-weight: bold;
+  }
+  
+  .restart-btn {
+    background-color: #ff6f61;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background-color 0.3s ease-in-out, transform 0.2s;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .restart-btn:hover {
+    background-color: #ff8a80;
+    transform: scale(1.05);
+  }
+  

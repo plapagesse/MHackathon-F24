@@ -3,6 +3,7 @@ import axios from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import useWebSocket from "../hooks/useWebSocket";
+import Cube from './Cube';
 import "./GameScreen.css";
 
 const GameScreen = () => {
@@ -149,7 +150,8 @@ const GameScreen = () => {
   };
 
   return (
-    <div>
+    <div className="game-screen">
+      <div><Cube isSmall={true} /> {}</div>
       {/* Time Bar */}
       <div className="time-bar">
         <div

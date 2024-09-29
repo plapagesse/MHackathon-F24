@@ -2,6 +2,7 @@
 import axios from "axios";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Cube from './Cube';
 
 const TopicUpload = () => {
   const [topic, setTopic] = useState("");
@@ -42,7 +43,10 @@ const TopicUpload = () => {
 
   return (
     <div>
+      <Cube isSmall={false} /> {}
       <h2>Start a New Lobby</h2>
+      <div>
+      </div>
       <input
         type="text"
         placeholder="Enter Game Topic"

@@ -29,6 +29,7 @@ const Scoreboard = ({ players, onRestart }) => {
 
   return (
     <div className="scoreboard-container">
+      <Cube isSmall={false} /> {/* Large Cube */}
       <h1 className="scoreboard-title">Game Over! Final Scores</h1>
       <ul className="player-list">
         {sortedPlayers.map((player, index) => (

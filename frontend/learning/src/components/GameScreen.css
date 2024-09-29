@@ -192,6 +192,8 @@ button[type="submit"]:hover {
   flex-direction: row;
   gap: 20px;
   flex-wrap: wrap;
+  width: 80vw;
+  height: 80vh;
 }
 
 .time-bar {
@@ -284,12 +286,12 @@ button[type="submit"]:hover {
   border-radius: 20px;
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 700px;
+  max-width: 500px;
   margin: 0 auto;
 }
 
 .chat-messages {
-  max-height: 150px;
+  max-height: 700px;
   overflow-y: auto;
   margin-bottom: 10px;
   text-align: left;
