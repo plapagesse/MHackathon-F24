@@ -368,10 +368,12 @@ def grade_player_raw_answers(
     return raw_scores, final_scores
 
 
-def grade_individual_answer(player_answer: str, narrative: str, misinformation: str):
+def grade_individual_answer(
+    player_answer: str, narrative: str, misinformation: str
+) -> int:
 
     prompt = f"""
-    You are an expert grader. Check if the player's answer seems to understand/identify the incorrect statement from the narrative. It doesn't have to be an exact match but there should be evidence of understanding. Provide a score of 1 for correct and 0 for incorrect.
+    You are an expert grader. Check if the player's answer seems to describe the incorrect statement from the narrative. It doesn't have to be an exact match but there should be evidence of understanding. Provide a score of 1 for correct and 0 for incorrect.
 
     Incorrect statement: {misinformation}
     Player's answer: {player_answer}

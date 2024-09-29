@@ -7,7 +7,7 @@ import uuid
 
 import redis.asyncio as redis
 from app.schemas import Rounds
-from app.utils import generate_bullets_from_topic
+from app.utils import generate_bullets_from_topic, grade_individual_answer
 from fastapi import (
     Depends,
     FastAPI,
@@ -446,14 +446,19 @@ async def evaluate_answer(
     lobby_id: str, message: dict, round_data: dict, subtopic_index: int
 ):
     """
-    Evaluates the player's answer and broadcasts the result via WebSocket.
+    Evaluates the player's answer using `grade_individual_answer`
+    and broadcasts the result via WebSocket.
     """
-    correct_answer = round_data["subtopics"][subtopic_index]["misinformation"]
+    # Get the narrative and misinformation for the current subtopic
+    subtopic = round_data["subtopics"][subtopic_index]
+    narrative = subtopic["narrative"]
+    misinformation = subtopic["misinformation"]
 
-    # Simulate long evaluation process if needed (e.g., using a large model)
-    # await asyncio.sleep(2)  # Simulated delay for evaluation
+    # Grade the player's answer
+    player_answer = message["message"]
+    score = grade_individual_answer(player_answer, narrative, misinformation)
 
-    if message["message"].lower() == correct_answer.lower():
+    if score == 1:
         # Broadcast correct answer
         await conn.publish(
             f"channel:{lobby_id}",
@@ -472,7 +477,7 @@ async def evaluate_answer(
                 {
                     "type": "wrong_guess",
                     "playerName": message["playerName"],
-                    "message": message["message"],
+                    "message": player_answer,
                 }
             ),
         )
