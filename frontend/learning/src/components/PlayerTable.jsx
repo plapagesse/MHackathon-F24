@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import useWebSocket from "../hooks/useWebSocket";
@@ -9,16 +9,17 @@ function PlayerTable() {
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
   const [isHost, setIsHost] = useState(false);
-  const [playerName, setPlayerName] = useState("");
-  const [nameEntered, setNameEntered] = useState(false);
+  const [playerName, setPlayerName] = useState(localStorage.getItem("player_name") || "");
+  const [nameEntered, setNameEntered] = useState(Boolean(localStorage.getItem("player_name")));
   const [inviteLink, setInviteLink] = useState("");
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState(localStorage.getItem("user_id") || null);
+  const isGameStarting = useRef(false);  // Track if the game is starting
 
   useEffect(() => {
     const checkHostAndFetchPlayers = async () => {
       try {
         const response = await axios.get(`/api/lobby/${lobbyId}`);
-        const { creator_id, topic } = response.data;
+        const { creator_id } = response.data;
 
         let storedUserId = localStorage.getItem("user_id");
         if (!storedUserId) {
@@ -28,6 +29,8 @@ function PlayerTable() {
         setUserId(storedUserId);
 
         if (creator_id === storedUserId) {
+          localStorage.setItem("player_name", "Host");
+          setPlayerName("Host");
           setIsHost(true);
         }
 
@@ -63,6 +66,8 @@ function PlayerTable() {
             );
             break;
           case "start_game":
+            isGameStarting.current = true;  // Set the flag to indicate that the game is starting
+            sendMessage(JSON.stringify({ type: "transitioning_to_game" }));  // Notify server of transition
             navigate(`/game/${lobbyId}`);
             break;
           case "lobby_closed":
@@ -76,7 +81,7 @@ function PlayerTable() {
         console.error("Error parsing WebSocket message:", error);
       }
     },
-    [navigate, lobbyId] // Include dependencies that are used inside the function
+    [navigate, lobbyId]
   );
 
   const sendMessage = useWebSocket(lobbyId, userId, handleIncomingMessage);
@@ -93,13 +98,21 @@ function PlayerTable() {
         player_name: playerName,
       });
       setNameEntered(true);
+      localStorage.setItem("player_name", playerName); // Store player name in localStorage
     } catch (error) {
       console.error("Error joining lobby:", error);
       alert("An unexpected error occurred. Please try again.");
     }
   };
 
-  const handleStartGame = () => {}
+  const handleStartGame = () => {
+    isGameStarting.current = true;  // Set the flag to indicate that the game is starting
+    sendMessage(JSON.stringify({ type: "start_game_initiated" }));
+    setTimeout(() => {
+      sendMessage(JSON.stringify({ type: "transitioning_to_game" }));  // Notify server of transition
+      navigate(`/game/${lobbyId}`);
+    }, 1000); // Add a small delay for smoother transition
+  }
 
   return (
     <div>
