@@ -1,5 +1,5 @@
 /* src/App.css */
-.App {
+/* .App {
   text-align: center;
   font-family: Arial, sans-serif;
   padding: 20px;
@@ -17,4 +17,171 @@ main {
   justify-content: center;
   align-items: center;
   flex-direction: column;
+} */
+
+
+/* src/App.css */
+/* @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap'); */
+@import url('https://fonts.googleapis.com/css2?family=Consolas:wght@400&display=swap');
+
+.App {
+  text-align: center;
+  font-family: 'Consolas', Arial, sans-serif;
+  padding: 20px;
+  background-color: #f0f4f8;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Cube Header */
+.cube {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  transform-style: preserve-3d;
+  transform: rotateY(45deg) rotateX(45deg);
+  animation: spin 5s infinite linear;
+  top: -70px;
+  left: 10%;
+}
+
+.cubeFace {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #ff6f61, #67acc8);
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  backface-visibility: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.cubeFace.face1 { transform: rotateY(0deg) translateZ(100px); }
+.cubeFace.face2 { transform: rotateY(90deg) translateZ(100px); }
+.cubeFace.face3 { transform: rotateY(180deg) translateZ(100px); }
+.cubeFace.face4 { transform: rotateY(-90deg) translateZ(100px); }
+.cubeFace.face5 { transform: rotateX(90deg) translateZ(100px); }
+.cubeFace.face6 { transform: rotateX(-90deg) translateZ(100px); }
+
+.small-cube {
+  position: fixed;
+  bottom: 40px;
+  right: 30px;
+  width: 100px;
+  height: 100px;
+  transform-style: preserve-3d;
+  transform: rotateY(45deg) rotateX(45deg);
+  animation: spin 5s infinite linear;
+}
+
+.small-cubeFace {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  font-size: 0.2rem;
+  background: linear-gradient(135deg, #ff6f61, #67acc8);
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  backface-visibility: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.small-cubeFace.face1 { transform: rotateY(0deg) translateZ(40px); }
+.small-cubeFace.face2 { transform: rotateY(90deg) translateZ(40px); }
+.small-cubeFace.face3 { transform: rotateY(180deg) translateZ(40px); }
+.small-cubeFace.face4 { transform: rotateY(-90deg) translateZ(40px); }
+.small-cubeFace.face5 { transform: rotateX(90deg) translateZ(40px); }
+.small-cubeFace.face6 { transform: rotateX(-90deg) translateZ(40px); }
+
+body {
+  background-color: #f0f4f8;
+  perspective: 1500px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+body:hover .cube {
+  transform: rotateY(405deg) rotateX(360deg);
+}
+
+@keyframes spin {
+  from { transform: rotateY(0deg) rotateX(0deg); }
+  to { transform: rotateY(360deg) rotateX(360deg); }
+}
+
+/* Main content styling */
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+/* Buttons */
+button {
+  background-color: #67acc8;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 1.2rem;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+  transform: scale(1.05) rotateX(10deg) rotateY(10deg);
+  background-color: #55a0b6;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* TopicUpload and PlayerTable */
+.topic-upload,
+.player-table {
+  background-color: white;
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+  transform: perspective(600px) rotateY(0deg);
+  transition: transform 0.4s ease;
+}
+
+.topic-upload:hover,
+.player-table:hover {
+  transform: perspective(600px) rotateY(-10deg);
+}
+
+input[type="text"] {
+  padding: 10px;
+  border: 2px solid #ff6f61;
+  border-radius: 10px;
+  font-size: 1rem;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+input[type="text"]:focus {
+  border-color: #67acc8;
+  outline: none;
+  box-shadow: 0 0 5px rgba(103, 172, 200, 0.5);
 }

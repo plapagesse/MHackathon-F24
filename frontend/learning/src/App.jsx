@@ -12,6 +12,7 @@ function App() {
   const [players, setPlayers] = useState(["foo"]);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [shrinkCube, setShrinkCube] = useState(false);
 
   const handleDiscard = () => {
     setStudyQuestions([]);
@@ -19,13 +20,17 @@ function App() {
 
   const handleStartGame = () => {
     setIsGameStarted(true);
+    setShrinkCube(true);
   };
 
   const handleGameEnd = () => {
     alert("Game over!");
     setIsGameStarted(false);
     setIsGameOver(true);
+    setShrinkCube(false);
   };
+
+  
 
   const handleRestartGame = () => {
     setIsGameOver(true);
@@ -36,7 +41,26 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Ailusion</h1>
+      {!shrinkCube ? (
+          <div className="cube">
+            <div className="cubeFace face1">AIllusion</div>
+            <div className="cubeFace face2">AIllusion</div>
+            <div className="cubeFace face3">AIllusion</div>
+            <div className="cubeFace face4">AIllusion</div>
+            <div className="cubeFace face5">AIllusion</div>
+            <div className="cubeFace face6">AIllusion</div>
+          </div>
+        ) : (
+          <div className="small-cube">
+            <div className="small-cubeFace face1">AIllusion</div>
+            <div className="small-cubeFace face2">AIllusion</div>
+            <div className="small-cubeFace face3">AIllusion</div>
+            <div className="small-cubeFace face4">AIllusion</div>
+            <div className="small-cubeFace face5">AIllusion</div>
+            <div className="small-cubeFace face6">AIllusion</div>
+          </div>
+        )}
+        
       </header>
       <main>
         {isGameOver ? (
