@@ -214,13 +214,58 @@ def generate_bullets_from_topic(topic: str) -> StudyNarrative:
     response = llm.invoke(prompt_template)
     narrative_text = response.content
 
-    print("RAW RESPONSE: ", narrative_text)
-
     subtopics = narrative_text.split(".")
 
-    print("subtopics: ", subtopics)
+    random_numbers = random.sample(range(0, len(subtopics)), 5)
+    selected_topics = []
+    for num in random_numbers:
+        selected_topics.append(subtopics[num])
 
-    return SubTopics(subtopics=subtopics)
+    # print(selected_topics)
+    for topic in selected_topics:
+        print(topic)
+        generate_narrative_from_topic(topic)
+
+
+def generate_narrative_from_topic(content: str) -> StudyNarrative:
+
+    load_dotenv()
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise ValueError("OpenAI API key not found.")
+
+    llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai_api_key)
+
+    prompt_template = f"""
+        Given the following topic, create a flowing narrative with an explanation of the subject with 1 intentionally incorrect statement. Explain the topic, but include a sentence or concept that is
+        wrong. You will say the wrong concept or statement as if it were treue. Yoiu know it is not true, but you sre trying to trick the players so say it with confidence.
+        This is a game where players will need to identify the incorrect part of your text. List the incorrect statement as the format states. Try to hide it place it randomly in the text.
+         It could be in the end, middle or beginning. The players will tell us what they think the incorrect statement is so we need it to tell whether they got it right or not.
+
+        Content: {content}
+
+        Format:
+        Narrative:
+        [narrative here]
+
+        Incorrect statement:
+        1. <incorrect statement>
+    """
+    response = llm.invoke(prompt_template)
+    narrative_text = response.content
+
+    # print("RAW RESPONSE: ", narrative_text)
+
+    narrative_parts = narrative_text.split("Incorrect statement:")
+    narrative = narrative_parts[0].strip()
+    incorrect_statements = [
+        line.strip() for line in narrative_parts[1].strip().split("\n")
+    ]
+
+    print("narrative part", narrative)
+    print("misinfo", incorrect_statements)
+
+    return StudyNarrative(narrative=narrative, misinformation=incorrect_statements)
 
 
 def grade_player_raw_answers(
