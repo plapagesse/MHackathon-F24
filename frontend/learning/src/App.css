@@ -72,7 +72,7 @@ main {
 
 .small-cube {
   position: fixed;
-  top: 20px;
+  bottom: 20px;
   left: 40px;
   width: 100px;
   height: 100px;

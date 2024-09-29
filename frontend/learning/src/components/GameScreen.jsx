@@ -186,29 +186,30 @@ const GameScreen = () => {
         <div className="paragraphs-container">
           {paragraphs.map((paragraph, index) => (
             <p key={index} className="paragraph-chunk">
-              {paragraph}
+              {"vara vara vara <br><br/> vara is mad at pedro"}
             </p>
           ))}
         </div>
 
         {/* Chat Box */}
         <div className="chat-box">
+        <form onSubmit={sendChatMessage}>
+            <input
+              type="text"
+              value={currentMessage}
+              onChange={(e) => setCurrentMessage(e.target.value)}
+              placeholder="What is the lie?"
+            />
+            <button type="submit">Send</button>
+          </form>
           <div className="chat-messages">
-            {chatMessages.map((msg, index) => (
+            {chatMessages.slice().reverse().map((msg, index) => (
               <p key={index}>
                 <strong>{msg.player}:</strong> {msg.message}
               </p>
             ))}
           </div>
-          <form onSubmit={sendChatMessage}>
-            <input
-              type="text"
-              value={currentMessage}
-              onChange={(e) => setCurrentMessage(e.target.value)}
-              placeholder="Type your answer..."
-            />
-            <button type="submit">Send</button>
-          </form>
+
         </div>
       </div>
     </div>

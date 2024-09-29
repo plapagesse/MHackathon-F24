@@ -166,7 +166,7 @@ button[type="submit"] {
   font-weight: bold;
   border: none;
   border-radius: 10px;
-  cursor: pointer;
+    rsor: pointer;
   transition: background-color 0.3s ease-in-out, transform 0.2s;
 }
 
@@ -280,9 +280,9 @@ button[type="submit"]:hover {
 
 /* Chat Box */
 .chat-box {
-  flex: 4;
+  flex: 5;
   background-color: #67acc8;
-  padding: 15px;
+  padding: 10px;
   border-radius: 20px;
   box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
   width: 100%;
@@ -316,7 +316,7 @@ input[type="text"] {
 }
 
 button[type="submit"] {
-  padding: 10px 20px;
+  padding: 10px 10px;
   background-color: #FF6F61;
   color: white;
   font-weight: bold;
