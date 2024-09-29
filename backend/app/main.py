@@ -17,6 +17,8 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from schemas import Rounds
+from utils import generate_bullets_from_topic
 
 app = FastAPI()
 
@@ -334,3 +336,9 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
         if user_id == creator_id:
             # Mark the lobby as closed to prevent reconnections
             await conn.delete(lobby_key)
+
+
+@app.get("/rounds", response_model=Rounds)
+async def get_rounds(topic: str) -> Rounds:
+    rounds = generate_bullets_from_topic(topic)
+    return rounds

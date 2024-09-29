@@ -5,7 +5,7 @@ import re
 from typing import Dict, List
 
 import pdfplumber
-from app.schemas import StudyNarrative, StudyQuestion
+from app.schemas import Rounds, StudyNarrative, StudyQuestion, Subtopic
 from docx import Document
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -222,10 +222,17 @@ def generate_bullets_from_topic(topic: str) -> StudyNarrative:
         selected_topics.append(subtopics[num])
 
     # print(selected_topics)
+    stopics = []
     for topic in selected_topics:
         print(topic)
         location = random.sample(["start", "middle", "end"], k=1)[0]
-        generate_narrative_from_topic(topic, location)
+        narrative, incorrect_statemetns = generate_narrative_from_topic(topic, location)
+        stopics.append(
+            Subtopic(
+                name=topic, narrative=narrative, misinformation=incorrect_statemetns
+            )
+        )
+    return Rounds(subtopics=stopics)
 
 
 def generate_narrative_from_topic(content: str, location) -> StudyNarrative:
@@ -266,7 +273,7 @@ def generate_narrative_from_topic(content: str, location) -> StudyNarrative:
     print("narrative part", narrative)
     print("misinfo", incorrect_statements)
 
-    return StudyNarrative(narrative=narrative, misinformation=incorrect_statements)
+    return narrative, incorrect_statements
 
 
 def grade_player_raw_answers(
