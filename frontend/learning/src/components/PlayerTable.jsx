@@ -1,82 +1,124 @@
-// src/components/PlayerTable.jsx
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
+import useWebSocket from "../hooks/useWebSocket";
 
-function PlayerTable({players, setPlayers, onStartGame}) {
-  const [isHost, setIsHost] = useState(true); // Assume the host for now, but this could be dynamic
-  const [playerName, setPlayerName] = useState(""); // Store the current player's name
-  const [nameEntered, setNameEntered] = useState(false); // Track if a player has entered their name
-  const [joinCode, setJoinCode] = useState(""); // The game join code
-  const [inputJoinCode, setInputJoinCode] = useState(""); // Input for the join code
-  const [hasJoined, setHasJoined] = useState(false); // Track if the player has joined the game
+function PlayerTable() {
+  const { lobbyId } = useParams();
+  const navigate = useNavigate();
+  const [players, setPlayers] = useState([]);
+  const [isHost, setIsHost] = useState(false);
+  const [playerName, setPlayerName] = useState("");
+  const [nameEntered, setNameEntered] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
+  const [userId, setUserId] = useState(null);
 
-  // If host, generate the join code
   useEffect(() => {
-    if (isHost) {
-      // Use axios to fetch the lobby join code
-      const createLobby = async () => {
-        try {
-          const response = await axios.post("/api/create-lobby");
-          console.log("creating code")
-          setJoinCode(response.data.lobby_id); // Use the returned lobby_id as the join code
-        } catch (error) {
-          console.error("Error creating lobby:", error);
+    const checkHostAndFetchPlayers = async () => {
+      try {
+        const response = await axios.get(`/api/lobby/${lobbyId}`);
+        const { creator_id, topic } = response.data;
+
+        let storedUserId = localStorage.getItem("user_id");
+        if (!storedUserId) {
+          storedUserId = uuidv4();
+          localStorage.setItem("user_id", storedUserId);
         }
-      };
+        setUserId(storedUserId);
 
-      createLobby();
+        if (creator_id === storedUserId) {
+          setIsHost(true);
+        }
+
+        const participantsResponse = await axios.get(`/api/lobby/${lobbyId}/participants`);
+        setPlayers(participantsResponse.data.players);
+      } catch (error) {
+        console.error("Error fetching lobby details:", error);
+        alert("Failed to fetch lobby details. Please ensure the lobby exists.");
+      }
+    };
+
+    checkHostAndFetchPlayers();
+    const currentLink = `${window.location.origin}/playertable/${lobbyId}`;
+    setInviteLink(currentLink);
+  }, [lobbyId]);
+
+  const handleIncomingMessage = useCallback(
+    (message) => {
+      try {
+        const parsedMessage = JSON.parse(message);
+        switch (parsedMessage.type) {
+          case "player_joined":
+            setPlayers((prevPlayers) => {
+              if (!prevPlayers.includes(parsedMessage.playerName)) {
+                return [...prevPlayers, parsedMessage.playerName];
+              }
+              return prevPlayers;
+            });
+            break;
+          case "player_left":
+            setPlayers((prevPlayers) =>
+              prevPlayers.filter((player) => player !== parsedMessage.playerName)
+            );
+            break;
+          case "start_game":
+            navigate(`/game/${lobbyId}`);
+            break;
+          case "lobby_closed":
+            alert(parsedMessage.message || "Lobby has been closed by the host.");
+            navigate("/");
+            break;
+          default:
+            console.warn("Unhandled message type:", parsedMessage.type);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    },
+    [navigate, lobbyId] // Include dependencies that are used inside the function
+  );
+
+  const sendMessage = useWebSocket(lobbyId, userId, handleIncomingMessage);
+
+  const handleJoinLobby = async () => {
+    if (!playerName.trim()) {
+      alert("Please enter a valid username.");
+      return;
     }
-  }, [isHost]);
 
-  const handleJoin = () => {
-    if (inputJoinCode === joinCode) {
-      setHasJoined(true);
+    try {
+      await axios.post(`/api/lobby/${lobbyId}/join`, {
+        user_id: userId,
+        player_name: playerName,
+      });
+      setNameEntered(true);
+    } catch (error) {
+      console.error("Error joining lobby:", error);
+      alert("An unexpected error occurred. Please try again.");
     }
   };
 
-  const addPlayer = (name) => {
-    if (!name.trim() || players.includes(name)) return;
-
-    const prevPlayers = players;
-    setPlayers((prevPlayers) => [...prevPlayers, name]);
-    setNameEntered(true); // Disable the input and button after the player enters their name
-  };
-
-  const startGame = () => {
-    if (isHost) {
-      console.log("Game started!");
-      onStartGame();
-      // Add logic to start the game here
-    }
-  };
+  const handleStartGame = () => {}
 
   return (
     <div>
-      {/* Display join code for host and other joined players */}
-      {isHost && <h2>Join Code: {joinCode}</h2>}
+      {isHost && (
+        <div style={{ marginBottom: "20px" }}>
+          <h3>Invite Link:</h3>
+          <a href={inviteLink}>{inviteLink}</a>
+          <p>Share this link with your friends to join the lobby.</p>
+        </div>
+      )}
 
-      <h2>Players</h2>
+      <h2>Players in Lobby</h2>
       <ul>
         {players.map((player, index) => (
           <li key={index}>{player}</li>
         ))}
       </ul>
 
-      {/* If the player has not joined yet, show join code input */}
-      {!hasJoined && !isHost && (
-        <div>
-          <input
-            type="text"
-            placeholder="Enter join code"
-            value={inputJoinCode}
-            onChange={(e) => setInputJoinCode(e.target.value)}
-          />
-          <button onClick={handleJoin}>Join Game</button>
-        </div>
-      )}
-
-      {/* If the player has joined or is the host, allow username input */}
-      {(hasJoined || isHost) && !nameEntered && (
+      {!isHost && !nameEntered && (
         <div>
           <input
             type="text"
@@ -84,13 +126,12 @@ function PlayerTable({players, setPlayers, onStartGame}) {
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
           />
-          <button onClick={() => addPlayer(playerName)}>Submit</button>
+          <button onClick={handleJoinLobby}>Join Lobby</button>
         </div>
       )}
 
-      {/* Host can start the game */}
       {isHost && (
-        <button onClick={startGame} style={{ marginTop: "20px" }}>
+        <button onClick={handleStartGame} style={{ marginTop: "20px" }}>
           Start Game
         </button>
       )}

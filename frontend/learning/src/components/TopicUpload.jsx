@@ -1,21 +1,40 @@
+// src/components/TopicUpload.jsx
+import axios from "axios";
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-const TopicUpload = ({ setTopic }) => {
-  const [focus, setFocus] = useState("");
+const TopicUpload = () => {
+  const [topic, setTopic] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleFocusChange = (e) => {
-    setFocus(e.target.value);
+  const handleTopicChange = (e) => {
+    setTopic(e.target.value);
   };
 
   const handleUpload = async () => {
+    if (!topic.trim()) {
+      alert("Please enter a valid topic.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      setTopic(focus);
+      // Create a lobby with the provided topic
+      const response = await axios.post("/api/create-lobby", { topic });
+
+      const { lobby_id, creator_id } = response.data;
+
+      // Store user information (creator_id) in localStorage for identification
+      localStorage.setItem("user_id", creator_id);
+      localStorage.setItem("lobby_id", lobby_id);
+
+      // Navigate to PlayerTable with the lobbyId
+      navigate(`/playertable/${lobby_id}`);
     } catch (error) {
-      console.error(error);
-      alert("Error uploading file or generating study questions.");
+      console.error("Error creating lobby:", error);
+      alert("Failed to create lobby. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -23,19 +42,16 @@ const TopicUpload = ({ setTopic }) => {
 
   return (
     <div>
+      <h2>Start a New Lobby</h2>
       <input
         type="text"
-        placeholder="Enter Game focus"
-        value={focus}
-        onChange={handleFocusChange}
-        style={{ marginLeft: "10px" }}
+        placeholder="Enter Game Topic"
+        value={topic}
+        onChange={handleTopicChange}
+        style={{ marginRight: "10px" }}
       />
-      <button
-        onClick={handleUpload}
-        disabled={loading}
-        style={{ marginLeft: "10px" }}
-      >
-        {loading ? "Processing..." : "Start Lobby"}
+      <button onClick={handleUpload} disabled={loading}>
+        {loading ? "Creating Lobby..." : "Start Lobby"}
       </button>
     </div>
   );
