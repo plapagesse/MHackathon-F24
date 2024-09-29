@@ -23,7 +23,9 @@ function useWebSocket(lobbyId, userId, onMessageReceived) {
 
     // Determine the WebSocket protocol
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${protocol}://${window.location.host}/ws/${lobbyId}?user_id=${userId}`;
+    const websocketUrl = import.meta.env.VITE_APP_WEBSOCKET_URL;
+
+    const wsUrl = `${protocol}://${websocketUrl}/ws/${lobbyId}?user_id=${userId}`;
 
     ws.current = new WebSocket(wsUrl);
 

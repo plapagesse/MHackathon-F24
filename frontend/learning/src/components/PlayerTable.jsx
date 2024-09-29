@@ -1,24 +1,28 @@
-import axios from "axios";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import useWebSocket from "../hooks/useWebSocket";
+import instance from "../network/api";
 
 function PlayerTable() {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
   const [isHost, setIsHost] = useState(false);
-  const [playerName, setPlayerName] = useState(localStorage.getItem("player_name") || "");
-  const [nameEntered, setNameEntered] = useState(Boolean(localStorage.getItem("player_name")));
+  const [playerName, setPlayerName] = useState(
+    localStorage.getItem("player_name") || ""
+  );
+  const [nameEntered, setNameEntered] = useState(
+    Boolean(localStorage.getItem("player_name"))
+  );
   const [inviteLink, setInviteLink] = useState("");
   const [userId, setUserId] = useState(localStorage.getItem("user_id") || null);
-  const isGameStarting = useRef(false);  // Track if the game is starting
+  const isGameStarting = useRef(false); // Track if the game is starting
 
   useEffect(() => {
     const checkHostAndFetchPlayers = async () => {
       try {
-        const response = await axios.get(`/api/lobby/${lobbyId}`);
+        const response = await instance.get(`/lobby/${lobbyId}`);
         const { creator_id } = response.data;
 
         let storedUserId = localStorage.getItem("user_id");
@@ -34,12 +38,14 @@ function PlayerTable() {
           setIsHost(true);
         }
 
-        const participantsResponse = await axios.get(`/api/lobby/${lobbyId}/participants`);
+        const participantsResponse = await instance.get(
+          `/lobby/${lobbyId}/participants`
+        );
         setPlayers(participantsResponse.data.players);
       } catch (error) {
         console.error("Error fetching lobby details:", error);
         alert("Failed to fetch lobby details. Please ensure the lobby exists.");
-        navigate("/");  // Redirect to home screen after showing the alert
+        navigate("/"); // Redirect to home screen after showing the alert
       }
     };
 
@@ -63,16 +69,20 @@ function PlayerTable() {
             break;
           case "player_left":
             setPlayers((prevPlayers) =>
-              prevPlayers.filter((player) => player !== parsedMessage.playerName)
+              prevPlayers.filter(
+                (player) => player !== parsedMessage.playerName
+              )
             );
             break;
           case "start_game":
-            isGameStarting.current = true;  // Set the flag to indicate that the game is starting
-            sendMessage(JSON.stringify({ type: "transitioning_to_game" }));  // Notify server of transition
+            isGameStarting.current = true; // Set the flag to indicate that the game is starting
+            sendMessage(JSON.stringify({ type: "transitioning_to_game" })); // Notify server of transition
             navigate(`/game/${lobbyId}`);
             break;
           case "lobby_closed":
-            alert(parsedMessage.message || "The lobby has been closed by the host.");
+            alert(
+              parsedMessage.message || "The lobby has been closed by the host."
+            );
             navigate("/"); // Redirect all players to the home screen
             break;
           default:
@@ -94,7 +104,7 @@ function PlayerTable() {
     }
 
     try {
-      await axios.post(`/api/lobby/${lobbyId}/join`, {
+      await instance.post(`/lobby/${lobbyId}/join`, {
         user_id: userId,
         player_name: playerName,
       });
@@ -107,13 +117,13 @@ function PlayerTable() {
   };
 
   const handleStartGame = () => {
-    isGameStarting.current = true;  // Set the flag to indicate that the game is starting
+    isGameStarting.current = true; // Set the flag to indicate that the game is starting
     sendMessage(JSON.stringify({ type: "start_game_initiated" }));
     setTimeout(() => {
-      sendMessage(JSON.stringify({ type: "transitioning_to_game" }));  // Notify server of transition
+      sendMessage(JSON.stringify({ type: "transitioning_to_game" })); // Notify server of transition
       navigate(`/game/${lobbyId}`);
     }, 1000); // Add a small delay for smoother transition
-  }
+  };
 
   return (
     <div>

@@ -1,7 +1,7 @@
 // src/components/TopicUpload.jsx
-import axios from "axios";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import instance from "../network/api";
 import Cube from "./Cube";
 
 const TopicUpload = () => {
@@ -23,7 +23,7 @@ const TopicUpload = () => {
 
     try {
       // Create a lobby with the provided topic
-      const response = await axios.post("/api/create-lobby", { topic });
+      const response = await instance.post("/create-lobby", { topic });
 
       const { lobby_id, creator_id } = response.data;
 

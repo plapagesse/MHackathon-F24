@@ -4,6 +4,7 @@ import json
 import os
 import re
 import uuid
+from urllib.parse import urlparse
 
 import redis.asyncio as redis
 from app.schemas import Rounds
@@ -24,9 +25,12 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
+REDIS_URL = urlparse(os.environ.get("REDIS_URL", "redis://redis"))
+
 # Configuration via environment variables
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_HOST = REDIS_URL.hostname
+REDIS_PORT = REDIS_URL.port
+REDIS_PASSWORD = REDIS_URL.password
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
 # Initialize Redis connection on startup
@@ -36,7 +40,9 @@ conn = None
 @app.on_event("startup")
 async def startup_event():
     global conn
-    conn = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    conn = redis.Redis(
+        host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, decode_responses=True
+    )
 
 
 @app.on_event("shutdown")
@@ -315,7 +321,9 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
         return
 
     # Create Pub/Sub connection and subscribe to the lobby channel
-    pubsub_conn = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    pubsub_conn = redis.Redis(
+        host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, decode_responses=True
+    )
     pubsub = pubsub_conn.pubsub()
     await pubsub.subscribe(f"channel:{lobby_id}")
 

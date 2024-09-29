@@ -1,8 +1,8 @@
 // src/components/GameScreen.jsx
-import axios from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import useWebSocket from "../hooks/useWebSocket";
+import instance from "../network/api";
 import Cube from "./Cube";
 import "./GameScreen.css";
 
@@ -38,8 +38,8 @@ const GameScreen = () => {
     setPlayerName(storedPlayerName);
 
     // Determine if the player is the host
-    axios
-      .get(`/api/lobby/${lobbyId}`)
+    instance
+      .get(`/lobby/${lobbyId}`)
       .then((response) => {
         if (response.data.creator_id === storedUserId) {
           console.log("We are host - call startRound()");
@@ -58,8 +58,8 @@ const GameScreen = () => {
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
-        const participantsResponse = await axios.get(
-          `/api/lobby/${lobbyId}/participants`
+        const participantsResponse = await instance.get(
+          `/lobby/${lobbyId}/participants`
         );
         setPlayers(participantsResponse.data.players);
         // Initialize scores to zero for each player
@@ -82,7 +82,7 @@ const GameScreen = () => {
       setIsGenerating(true); // Set loading state
 
       // Make an HTTP request to initiate the round generation
-      await axios.post(`/api/rounds/start`, null, {
+      await instance.post(`/rounds/start`, null, {
         params: { lobby_id: lobbyId },
       });
 
@@ -210,7 +210,7 @@ const GameScreen = () => {
 
       try {
         // Send the answer to the backend for validation
-        await axios.post(`/api/submit-answer`, messageData, {
+        await instance.post(`/submit-answer`, messageData, {
           params: { lobby_id: lobbyId },
         });
       } catch (error) {
@@ -249,7 +249,7 @@ const GameScreen = () => {
               }}
             ></div>
           </div>
-  
+
           {/* Player Scores */}
           <div className="player-scores">
             <h3>Players</h3>
@@ -261,7 +261,7 @@ const GameScreen = () => {
               ))}
             </ul>
           </div>
-  
+
           {/* Narrative Section */}
           <div className="paragraphs-container">
             {roundData && currentSubtopicIndex >= 0 && (
@@ -270,7 +270,7 @@ const GameScreen = () => {
               </p>
             )}
           </div>
-  
+
           {/* Chat Box */}
           <div className="chat-box">
             <div className="chat-messages">
@@ -283,7 +283,9 @@ const GameScreen = () => {
                       : msg.player === playerName && !hasGuessedCorrectly
                       ? "red"
                       : "black",
-                    fontWeight: msg.message.includes("got the answer!") ? "bold" : "normal",
+                    fontWeight: msg.message.includes("got the answer!")
+                      ? "bold"
+                      : "normal",
                   }}
                 >
                   <strong>{msg.player}:</strong> {msg.message}
@@ -298,7 +300,10 @@ const GameScreen = () => {
                 placeholder="Type your answer..."
                 disabled={timeLeft <= 0 || hasGuessedCorrectly}
               />
-              <button type="submit" disabled={timeLeft <= 0 || hasGuessedCorrectly}>
+              <button
+                type="submit"
+                disabled={timeLeft <= 0 || hasGuessedCorrectly}
+              >
                 Send
               </button>
             </form>

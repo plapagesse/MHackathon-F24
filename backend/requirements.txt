@@ -7,3 +7,4 @@ pdfplumber
 python-docx
 langchain_openai
 redis
+gunicorn
