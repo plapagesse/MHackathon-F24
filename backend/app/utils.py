@@ -5,7 +5,7 @@ import re
 from typing import Dict, List
 
 import pdfplumber
-from app.schemas import StudyNarrative, StudyQuestion, SubTopics
+from app.schemas import StudyNarrative, StudyQuestion
 from docx import Document
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter

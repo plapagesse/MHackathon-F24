@@ -54,7 +54,3 @@ class StudyNarrative(BaseModel):
 class StudyQuestionResponse(BaseModel):
     study_questions: Optional[List[StudyQuestion]] = None
     study_narrative: Optional[StudyNarrative] = None
-
-
-class SubTopics(BaseModel):
-    subtopics: List[str]
