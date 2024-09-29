@@ -176,6 +176,7 @@ def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
     """
     response = llm.invoke(prompt_template)
     narrative_text = response.content
+    print("raw narrative", narrative_text)
 
     # print("RAW RESPONSE: ", narrative_text)
 
@@ -266,6 +267,7 @@ def generate_narrative_from_topic(content: str, location) -> tuple[str, str]:
 
     narrative_parts = narrative_text.split("Incorrect statement:")
     narrative = narrative_parts[0].strip()
+    narrative = re.sub(r"(\*?\s*Narrative\s*:?\s*\*?)", "", narrative).strip()
     incorrect_statements = [
         line.strip() for line in narrative_parts[1].strip().split("\n")
     ]
@@ -391,6 +393,7 @@ def grade_individual_answer(
     try:
         response = llm.invoke(prompt)
         response_text = response.content.strip()
+        print(misinformation)
         print("RAW", response_text)
         score_match = re.search(r"(Final Score:)\s*\**(\d)\**", response_text)
         if score_match:

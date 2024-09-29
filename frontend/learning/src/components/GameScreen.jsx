@@ -3,6 +3,7 @@ import axios from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import useWebSocket from "../hooks/useWebSocket";
+import Cube from "./Cube";
 import "./GameScreen.css";
 
 const GameScreen = () => {
@@ -17,6 +18,7 @@ const GameScreen = () => {
   const [userId, setUserId] = useState(null);
   const [playerName, setPlayerName] = useState("");
   const [isHost, setIsHost] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(true); // Track if round is generating
   const [scores, setScores] = useState({}); // Player scores
   const [hasGuessedCorrectly, setHasGuessedCorrectly] = useState(false); // Track if player guessed correctly
   const [correctGuessCount, setCorrectGuessCount] = useState(0); // Track how many players have guessed correctly
@@ -77,6 +79,7 @@ const GameScreen = () => {
   const startRound = async () => {
     try {
       console.log("Starting round generation...");
+      setIsGenerating(true); // Set loading state
 
       // Make an HTTP request to initiate the round generation
       await axios.post(`/api/rounds/start`, null, {
@@ -112,6 +115,7 @@ const GameScreen = () => {
             setTimeLeft(60); // Start countdown for the first subtopic
             setHasGuessedCorrectly(false); // Reset correct guess state for each player
             setCorrectGuessCount(0); // Reset correct guess count for the new round
+            setIsGenerating(false); // Stop loading
             break;
           case "round_error":
             console.error("Error generating round:", parsedMessage.message);
@@ -220,67 +224,87 @@ const GameScreen = () => {
 
   return (
     <div className="game-screen">
-      {/* Time Bar */}
-      <div className="time-bar">
-        <div
-          className="time-remaining"
-          style={{
-            width: `${(timeLeft / 60) * 100}%`,
-            backgroundColor:
-              timeLeft > 40
-                ? "green"
-                : timeLeft > 20
-                ? "orange"
-                : timeLeft > 10
-                ? "yellow"
-                : "red",
-          }}
-        ></div>
-      </div>
-
-      {/* Player Scores */}
-      <div className="player-scores">
-        <h3>Players</h3>
-        <ul>
-          {players.map((player, index) => (
-            <li key={index}>
-              {player} : {scores[player] || 0}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Narrative Section */}
-      <div className="paragraphs-container">
-        {roundData && currentSubtopicIndex >= 0 && (
-          <p className="paragraph-chunk">
-            {roundData.subtopics[currentSubtopicIndex].narrative}
-          </p>
-        )}
-      </div>
-
-      {/* Chat Box */}
-      <div className="chat-box">
-        <div className="chat-messages">
-          {chatMessages.map((msg, index) => (
-            <p key={index}>
-              <strong>{msg.player}:</strong> {msg.message}
-            </p>
-          ))}
+      {isGenerating ? (
+        <div className="loading-container">
+          <Cube isSmall={false} />
+          <p>Generating questions...</p>
         </div>
-        <form onSubmit={sendChatMessage}>
-          <input
-            type="text"
-            value={currentMessage}
-            onChange={(e) => setCurrentMessage(e.target.value)}
-            placeholder="Type your answer..."
-            disabled={timeLeft <= 0 || hasGuessedCorrectly}
-          />
-          <button type="submit" disabled={timeLeft <= 0 || hasGuessedCorrectly}>
-            Send
-          </button>
-        </form>
-      </div>
+      ) : (
+        <>
+          <Cube isSmall={true} />
+          {/* Time Bar */}
+          <div className="time-bar">
+            <div
+              className="time-remaining"
+              style={{
+                width: `${(timeLeft / 60) * 100}%`,
+                backgroundColor:
+                  timeLeft > 40
+                    ? "green"
+                    : timeLeft > 20
+                    ? "orange"
+                    : timeLeft > 10
+                    ? "yellow"
+                    : "red",
+              }}
+            ></div>
+          </div>
+  
+          {/* Player Scores */}
+          <div className="player-scores">
+            <h3>Players</h3>
+            <ul>
+              {players.map((player, index) => (
+                <li key={index}>
+                  {player} : {scores[player] || 0}
+                </li>
+              ))}
+            </ul>
+          </div>
+  
+          {/* Narrative Section */}
+          <div className="paragraphs-container">
+            {roundData && currentSubtopicIndex >= 0 && (
+              <p className="paragraph-chunk">
+                {roundData.subtopics[currentSubtopicIndex].narrative}
+              </p>
+            )}
+          </div>
+  
+          {/* Chat Box */}
+          <div className="chat-box">
+            <div className="chat-messages">
+              {chatMessages.map((msg, index) => (
+                <p
+                  key={index}
+                  style={{
+                    color: msg.message.includes("got the answer!")
+                      ? "green"
+                      : msg.player === playerName && !hasGuessedCorrectly
+                      ? "red"
+                      : "black",
+                    fontWeight: msg.message.includes("got the answer!") ? "bold" : "normal",
+                  }}
+                >
+                  <strong>{msg.player}:</strong> {msg.message}
+                </p>
+              ))}
+            </div>
+            <form onSubmit={sendChatMessage}>
+              <input
+                type="text"
+                value={currentMessage}
+                onChange={(e) => setCurrentMessage(e.target.value)}
+                placeholder="Type your answer..."
+                disabled={timeLeft <= 0 || hasGuessedCorrectly}
+              />
+              <button type="submit" disabled={timeLeft <= 0 || hasGuessedCorrectly}>
+                Send
+              </button>
+            </form>
+          </div>
+        </>
+      )}
     </div>
   );
 };

@@ -45,7 +45,7 @@ main {
   transform: rotateY(45deg) rotateX(45deg);
   animation: spin 5s infinite linear;
   top: -70px;
-  left: 35%;
+  left: 21%;
 }
 
 .cubeFace {
