@@ -391,13 +391,20 @@ async def start_round_generation(
 
 async def generate_and_broadcast_rounds(lobby_id: str, topic: str):
     """
-    Generate round data and broadcast it to the lobby via Pub/Sub once completed.
+    Generate round data, store it in Redis, and broadcast it to the lobby via Pub/Sub once completed.
     The generation of rounds is run in a separate thread if it's a synchronous function.
     """
     try:
         # Run the synchronous function in a thread to avoid blocking the event loop
         loop = asyncio.get_running_loop()
         rounds = await loop.run_in_executor(None, generate_bullets_from_topic, topic)
+
+        # Store the generated round data in Redis as serialized JSON
+        rounds_key = f"lobby:{lobby_id}:round_data"
+        await conn.set(rounds_key, json.dumps(rounds.model_dump()))
+
+        # Optionally set an expiration time for the rounds data (e.g., 24 hours)
+        await conn.expire(rounds_key, 24 * 60 * 60)
 
         # Broadcast the round data to all players in the lobby
         await conn.publish(
@@ -409,4 +416,63 @@ async def generate_and_broadcast_rounds(lobby_id: str, topic: str):
         await conn.publish(
             f"channel:{lobby_id}",
             json.dumps({"type": "round_error", "message": str(e)}),
+        )
+
+
+@app.post("/submit-answer")
+async def submit_answer(
+    lobby_id: str, message: dict, background_tasks: BackgroundTasks
+):
+    rounds_key = f"lobby:{lobby_id}:round_data"
+    subtopic_index = message["subtopicIndex"]
+
+    # Fetch the round data from Redis as a serialized JSON string
+    round_data_json = await conn.get(rounds_key)
+    if not round_data_json:
+        raise HTTPException(status_code=404, detail="Round data not found")
+
+    # Parse the JSON string to get the round data
+    round_data = json.loads(round_data_json)
+
+    # Run answer evaluation in a background task
+    background_tasks.add_task(
+        evaluate_answer, lobby_id, message, round_data, subtopic_index
+    )
+
+    return {"detail": "Answer received and being processed"}
+
+
+async def evaluate_answer(
+    lobby_id: str, message: dict, round_data: dict, subtopic_index: int
+):
+    """
+    Evaluates the player's answer and broadcasts the result via WebSocket.
+    """
+    correct_answer = round_data["subtopics"][subtopic_index]["misinformation"]
+
+    # Simulate long evaluation process if needed (e.g., using a large model)
+    # await asyncio.sleep(2)  # Simulated delay for evaluation
+
+    if message["message"].lower() == correct_answer.lower():
+        # Broadcast correct answer
+        await conn.publish(
+            f"channel:{lobby_id}",
+            json.dumps(
+                {
+                    "type": "correct_guess",
+                    "playerName": message["playerName"],
+                }
+            ),
+        )
+    else:
+        # Broadcast incorrect guess
+        await conn.publish(
+            f"channel:{lobby_id}",
+            json.dumps(
+                {
+                    "type": "wrong_guess",
+                    "playerName": message["playerName"],
+                    "message": message["message"],
+                }
+            ),
         )

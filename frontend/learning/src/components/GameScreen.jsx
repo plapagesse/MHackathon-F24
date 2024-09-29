@@ -112,42 +112,30 @@ const GameScreen = () => {
           case "round_error":
             console.error("Error generating round:", parsedMessage.message);
             break;
-          case "chat_message":
-            if (parsedMessage.user_id !== userId) {
-              setChatMessages((prevMessages) => [
-                ...prevMessages,
-                {
-                  player: parsedMessage.playerName,
-                  message: parsedMessage.message,
-                },
-              ]);
-            }
+          case "wrong_guess":
+            setChatMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                player: parsedMessage.playerName,
+                message: parsedMessage.message,
+              },
+            ]);
             break;
-          case "player_guess":
-            if (parsedMessage.correct) {
-              // Broadcast the correct guess and update score
-              setScores((prevScores) => ({
-                ...prevScores,
-                [parsedMessage.playerName]:
-                  prevScores[parsedMessage.playerName] + timeLeft,
-              }));
-              setChatMessages((prevMessages) => [
-                ...prevMessages,
-                {
-                  player: "System",
-                  message: `${parsedMessage.playerName} got the answer!`,
-                },
-              ]);
-              setTimeLeft(0); // End the round as the answer is correct
-            } else {
-              setChatMessages((prevMessages) => [
-                ...prevMessages,
-                {
-                  player: parsedMessage.playerName,
-                  message: parsedMessage.message,
-                },
-              ]);
-            }
+          case "correct_guess":
+            // Update score and notify players that someone got it right
+            setScores((prevScores) => ({
+              ...prevScores,
+              [parsedMessage.playerName]:
+                prevScores[parsedMessage.playerName] + timeLeft,
+            }));
+            setChatMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                player: "System",
+                message: `${parsedMessage.playerName} got the answer!`,
+              },
+            ]);
+            setTimeLeft(0); // End the round as the answer is correct
             break;
           case "lobby_closed":
             alert(
@@ -185,18 +173,27 @@ const GameScreen = () => {
   };
 
   // Handle sending a chat message (player's guess)
-  const sendChatMessage = (e) => {
+  const sendChatMessage = async (e) => {
     e.preventDefault();
     if (currentMessage.trim()) {
       const messageData = {
-        type: "player_guess",
         message: currentMessage,
         user_id: userId,
         playerName: playerName,
         subtopicIndex: currentSubtopicIndex,
       };
-      sendMessage(JSON.stringify(messageData));
-      setCurrentMessage(""); // Clear input after sending
+
+      try {
+        // Send the answer to the backend for validation
+        await axios.post(`/api/submit-answer`, messageData, {
+          params: { lobby_id: lobbyId },
+        });
+      } catch (error) {
+        console.error("Error submitting the answer:", error);
+      }
+
+      // Clear input after submitting
+      setCurrentMessage("");
     }
   };
 
