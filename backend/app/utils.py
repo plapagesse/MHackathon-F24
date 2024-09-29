@@ -226,16 +226,16 @@ def generate_bullets_from_topic(topic: str) -> StudyNarrative:
     for topic in selected_topics:
         print(topic)
         location = random.sample(["start", "middle", "end"], k=1)[0]
-        narrative, incorrect_statemetns = generate_narrative_from_topic(topic, location)
+        narrative, incorrect_statements = generate_narrative_from_topic(topic, location)
         stopics.append(
             Subtopic(
-                name=topic, narrative=narrative, misinformation=incorrect_statemetns
+                name=topic, narrative=narrative, misinformation=incorrect_statements
             )
         )
     return Rounds(subtopics=stopics)
 
 
-def generate_narrative_from_topic(content: str, location) -> StudyNarrative:
+def generate_narrative_from_topic(content: str, location) -> tuple[str, str]:
 
     load_dotenv()
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -273,7 +273,7 @@ def generate_narrative_from_topic(content: str, location) -> StudyNarrative:
     print("narrative part", narrative)
     print("misinfo", incorrect_statements)
 
-    return narrative, incorrect_statements
+    return narrative, incorrect_statements[0]
 
 
 def grade_player_raw_answers(

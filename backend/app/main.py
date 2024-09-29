@@ -6,19 +6,21 @@ import re
 import uuid
 
 import redis.asyncio as redis
+from app.schemas import Rounds
+from app.utils import generate_bullets_from_topic
 from fastapi import (
     Depends,
     FastAPI,
     File,
     HTTPException,
+    Query,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
+from fastapi.background import BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from schemas import Rounds
-from utils import generate_bullets_from_topic
 
 app = FastAPI()
 
@@ -105,6 +107,25 @@ async def get_lobby(lobby_id: str):
     topic = await conn.hget(lobby_key, "topic")
 
     return {"creator_id": creator_id, "topic": topic}
+
+
+@app.get("/lobby/{lobby_id}/topic", response_model=dict)
+async def get_topic(lobby_id: str):
+    """
+    Get the topic associated with a given lobby ID.
+    """
+    if not LOBBY_ID_REGEX.match(lobby_id):
+        raise HTTPException(status_code=400, detail="Invalid lobby ID format")
+
+    lobby_key = f"lobby:{lobby_id}"
+    if not await conn.exists(lobby_key):
+        raise HTTPException(status_code=404, detail="Lobby does not exist")
+
+    topic = await conn.hget(lobby_key, "topic")
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found for this lobby")
+
+    return {"lobby_id": lobby_id, "topic": topic}
 
 
 @app.get("/lobby/{lobby_id}/participants", response_model=dict)
@@ -338,7 +359,54 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
             await conn.delete(lobby_key)
 
 
-@app.get("/rounds", response_model=Rounds)
-async def get_rounds(topic: str) -> Rounds:
-    rounds = generate_bullets_from_topic(topic)
-    return rounds
+# @app.get("/rounds", response_model=Rounds)
+# async def get_rounds(topic: str) -> Rounds:
+#     rounds = generate_bullets_from_topic(topic)
+#     return rounds
+
+
+@app.post("/rounds/start")
+async def start_round_generation(
+    lobby_id: str = Query(...), background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    """
+    Start the round generation process asynchronously.
+    """
+    if not LOBBY_ID_REGEX.match(lobby_id):
+        raise HTTPException(status_code=400, detail="Invalid lobby ID format")
+
+    lobby_key = f"lobby:{lobby_id}"
+    if not await conn.exists(lobby_key):
+        raise HTTPException(status_code=404, detail="Lobby does not exist")
+
+    topic = await conn.hget(lobby_key, "topic")
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found for this lobby")
+
+    # Schedule the round generation task to run in the background
+    background_tasks.add_task(generate_and_broadcast_rounds, lobby_id, topic)
+
+    return {"detail": "Round generation started"}
+
+
+async def generate_and_broadcast_rounds(lobby_id: str, topic: str):
+    """
+    Generate round data and broadcast it to the lobby via Pub/Sub once completed.
+    The generation of rounds is run in a separate thread if it's a synchronous function.
+    """
+    try:
+        # Run the synchronous function in a thread to avoid blocking the event loop
+        loop = asyncio.get_running_loop()
+        rounds = await loop.run_in_executor(None, generate_bullets_from_topic, topic)
+
+        # Broadcast the round data to all players in the lobby
+        await conn.publish(
+            f"channel:{lobby_id}",
+            json.dumps({"type": "round_data_ready", "roundData": rounds.model_dump()}),
+        )
+    except Exception as e:
+        # Handle any errors that occur during round generation
+        await conn.publish(
+            f"channel:{lobby_id}",
+            json.dumps({"type": "round_error", "message": str(e)}),
+        )

@@ -6,13 +6,10 @@ import GameScreen from "./components/GameScreen";
 import PlayerTable from "./components/PlayerTable";
 import TopicUpload from "./components/TopicUpload";
 
-
 function App() {
-
   return (
     <Router>
       <div className="App">
-    
         <main>
           <Routes>
             <Route path="/" element={<TopicUpload />} />
@@ -22,7 +19,7 @@ function App() {
         </main>
       </div>
     </Router>
-  )
+  );
 }
 
 export default App;
