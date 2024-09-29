@@ -43,19 +43,20 @@ const TopicUpload = () => {
 
   return (
     <div>
-      <Cube isSmall={false} /> {}
+      <div className="lobby-cube"> <Cube isSmall={false} /> {}</div>
       <h2>Start a New Lobby</h2>
-      <div></div>
-      <input
-        type="text"
-        placeholder="Enter Game Topic"
-        value={topic}
-        onChange={handleTopicChange}
-        style={{ marginRight: "10px" }}
-      />
-      <button onClick={handleUpload} disabled={loading}>
-        {loading ? "Creating Lobby..." : "Start Lobby"}
-      </button>
+      <form onSubmit={(e) => { e.preventDefault(); handleUpload(); }}>
+  <input
+    type="text"
+    placeholder="Enter Game Topic"
+    value={topic}
+    onChange={handleTopicChange}
+    style={{ marginRight: "10px" }}
+  />
+  <button type="submit" disabled={loading}>
+    {loading ? "Creating Lobby..." : "Start Lobby"}
+  </button>
+</form>
     </div>
   );
 };

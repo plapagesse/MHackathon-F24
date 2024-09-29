@@ -246,6 +246,28 @@ button[type="submit"]:hover {
   animation: float-bounce 2s infinite ease-in-out;
 }
 
+.loading-container {
+  /* display: flex; */
+  /* justify-content: center; */
+  align-items: center;
+  height: 100vh; /* Full viewport height */
+  text-align: center;
+  flex-direction: column;
+  margin-top: 200px;
+  margin-left: 370px;
+
+
+}
+
+.loading-container p {
+  margin-top: 50px;
+  margin-left: 10px;
+  font-size: 1.5rem;
+  color: #333;
+  /* margin-right: 600px; */
+  text-align: center;
+}
+
 
 @keyframes float-bounce {
   0%, 100% {
@@ -302,8 +324,6 @@ button[type="submit"]:hover {
   padding: 10px;
   border-radius: 10px;
   margin-bottom: 10px;
-  font-weight: bold;
-  color: #1f1b33;
 }
 
 input[type="text"] {
