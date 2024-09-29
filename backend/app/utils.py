@@ -5,7 +5,7 @@ import re
 from typing import Dict, List
 
 import pdfplumber
-from app.schemas import StudyNarrative, StudyQuestion
+from app.schemas import StudyNarrative, StudyQuestion, SubTopics
 from docx import Document
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -189,6 +189,38 @@ def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
     print("misinfo", incorrect_statements)
 
     return StudyNarrative(narrative=narrative, misinformation=incorrect_statements)
+
+
+def generate_bullets_from_topic(topic: str) -> StudyNarrative:
+
+    load_dotenv()
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise ValueError("OpenAI API key not found.")
+
+    llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai_api_key)
+
+    prompt_template = f"""
+        You are an expert educational content creator. Given the following topic, create as litle as 10 aor as much as 40 subtopics relating to the main topic provided. 
+        They must be subcategories of the main topic provided.
+
+        Content: {topic}
+
+        Format:
+        . <subtopic 1>
+        . <subtopic 2>
+        . <subtopic 3>
+    """
+    response = llm.invoke(prompt_template)
+    narrative_text = response.content
+
+    print("RAW RESPONSE: ", narrative_text)
+
+    subtopics = narrative_text.split(".")
+
+    print("subtopics: ", subtopics)
+
+    return SubTopics(subtopics=subtopics)
 
 
 def grade_player_raw_answers(
