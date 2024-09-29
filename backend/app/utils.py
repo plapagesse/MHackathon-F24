@@ -226,16 +226,16 @@ def generate_bullets_from_topic(topic: str) -> StudyNarrative:
     for topic in selected_topics:
         print(topic)
         location = random.sample(["start", "middle", "end"], k=1)[0]
-        narrative, incorrect_statemetns = generate_narrative_from_topic(topic, location)
+        narrative, incorrect_statements = generate_narrative_from_topic(topic, location)
         stopics.append(
             Subtopic(
-                name=topic, narrative=narrative, misinformation=incorrect_statemetns
+                name=topic, narrative=narrative, misinformation=incorrect_statements
             )
         )
     return Rounds(subtopics=stopics)
 
 
-def generate_narrative_from_topic(content: str, location) -> StudyNarrative:
+def generate_narrative_from_topic(content: str, location) -> tuple[str, str]:
 
     load_dotenv()
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -273,7 +273,7 @@ def generate_narrative_from_topic(content: str, location) -> StudyNarrative:
     print("narrative part", narrative)
     print("misinfo", incorrect_statements)
 
-    return narrative, incorrect_statements
+    return narrative, incorrect_statements[0]
 
 
 def grade_player_raw_answers(
@@ -366,3 +366,66 @@ def grade_player_raw_answers(
         final_scores[player] = final_score
 
     return raw_scores, final_scores
+
+
+def grade_individual_answer(
+    player_answer: str, narrative: str, misinformation: str
+) -> int:
+
+    prompt = f"""
+    You are an expert grader. Check if the player's answer seems to describe the incorrect statement from the narrative. It doesn't have to be an exact match but there should be evidence of understanding. Provide a score of 1 for correct and 0 for incorrect.
+
+    Incorrect statement: {misinformation}
+    Player's answer: {player_answer}
+
+    Your response should follow this structure:
+    Final Score: [0 or 1]
+    """
+    load_dotenv()
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise ValueError("OpenAI API key not found.")
+
+    llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=openai_api_key)
+
+    try:
+        response = llm.invoke(prompt)
+        response_text = response.content.strip()
+        print("RAW", response_text)
+        score_match = re.search(r"(Final Score:)\s*\**(\d)\**", response_text)
+        if score_match:
+            return int(score_match.group(2))  # return 1 or 0 based on grading
+        else:
+            return 0  # default to 0 if no valid score found
+    except Exception as e:
+        print(f"Error grading answer: {e}")
+        return 0  # default to 0 in case of error
+
+
+def adjust_scores_based_on_time(
+    player_answers: Dict[str, Dict[str, float]],
+    raw_scores: Dict[str, int],
+    time_weight: float = 0.2,
+) -> Dict[str, float]:
+
+    final_scores = {}
+
+    min_time = min([data["response_time"] for data in player_answers.values()])
+    max_time = max([data["response_time"] for data in player_answers.values()])
+
+    for player, score in raw_scores.items():
+        time = player_answers[player]["response_time"]
+        if score == 1:  #  only for correct answers
+            normalized_time = (
+                (max_time - time) / (max_time - min_time)
+                if max_time != min_time
+                else 1.0
+            )
+            time_adjustment = normalized_time * time_weight
+            final_score = score + time_adjustment * score
+        else:
+            final_score = score  # incorrect answers keep their score of 0
+
+        final_scores[player] = final_score
+
+    return final_scores

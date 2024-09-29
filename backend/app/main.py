@@ -7,16 +7,18 @@ import uuid
 
 import redis.asyncio as redis
 from app.schemas import Rounds
-from app.utils import generate_bullets_from_topic
+from app.utils import generate_bullets_from_topic, grade_individual_answer
 from fastapi import (
     Depends,
     FastAPI,
     File,
     HTTPException,
+    Query,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
 )
+from fastapi.background import BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -105,6 +107,25 @@ async def get_lobby(lobby_id: str):
     topic = await conn.hget(lobby_key, "topic")
 
     return {"creator_id": creator_id, "topic": topic}
+
+
+@app.get("/lobby/{lobby_id}/topic", response_model=dict)
+async def get_topic(lobby_id: str):
+    """
+    Get the topic associated with a given lobby ID.
+    """
+    if not LOBBY_ID_REGEX.match(lobby_id):
+        raise HTTPException(status_code=400, detail="Invalid lobby ID format")
+
+    lobby_key = f"lobby:{lobby_id}"
+    if not await conn.exists(lobby_key):
+        raise HTTPException(status_code=404, detail="Lobby does not exist")
+
+    topic = await conn.hget(lobby_key, "topic")
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found for this lobby")
+
+    return {"lobby_id": lobby_id, "topic": topic}
 
 
 @app.get("/lobby/{lobby_id}/participants", response_model=dict)
@@ -338,7 +359,125 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
             await conn.delete(lobby_key)
 
 
-@app.get("/rounds", response_model=Rounds)
-async def get_rounds(topic: str) -> Rounds:
-    rounds = generate_bullets_from_topic(topic)
-    return rounds
+# @app.get("/rounds", response_model=Rounds)
+# async def get_rounds(topic: str) -> Rounds:
+#     rounds = generate_bullets_from_topic(topic)
+#     return rounds
+
+
+@app.post("/rounds/start")
+async def start_round_generation(
+    lobby_id: str = Query(...), background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    """
+    Start the round generation process asynchronously.
+    """
+    if not LOBBY_ID_REGEX.match(lobby_id):
+        raise HTTPException(status_code=400, detail="Invalid lobby ID format")
+
+    lobby_key = f"lobby:{lobby_id}"
+    if not await conn.exists(lobby_key):
+        raise HTTPException(status_code=404, detail="Lobby does not exist")
+
+    topic = await conn.hget(lobby_key, "topic")
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found for this lobby")
+
+    # Schedule the round generation task to run in the background
+    background_tasks.add_task(generate_and_broadcast_rounds, lobby_id, topic)
+
+    return {"detail": "Round generation started"}
+
+
+async def generate_and_broadcast_rounds(lobby_id: str, topic: str):
+    """
+    Generate round data, store it in Redis, and broadcast it to the lobby via Pub/Sub once completed.
+    The generation of rounds is run in a separate thread if it's a synchronous function.
+    """
+    try:
+        # Run the synchronous function in a thread to avoid blocking the event loop
+        loop = asyncio.get_running_loop()
+        rounds = await loop.run_in_executor(None, generate_bullets_from_topic, topic)
+
+        # Store the generated round data in Redis as serialized JSON
+        rounds_key = f"lobby:{lobby_id}:round_data"
+        await conn.set(rounds_key, json.dumps(rounds.model_dump()))
+
+        # Optionally set an expiration time for the rounds data (e.g., 24 hours)
+        await conn.expire(rounds_key, 24 * 60 * 60)
+
+        # Broadcast the round data to all players in the lobby
+        await conn.publish(
+            f"channel:{lobby_id}",
+            json.dumps({"type": "round_data_ready", "roundData": rounds.model_dump()}),
+        )
+    except Exception as e:
+        # Handle any errors that occur during round generation
+        await conn.publish(
+            f"channel:{lobby_id}",
+            json.dumps({"type": "round_error", "message": str(e)}),
+        )
+
+
+@app.post("/submit-answer")
+async def submit_answer(
+    lobby_id: str, message: dict, background_tasks: BackgroundTasks
+):
+    rounds_key = f"lobby:{lobby_id}:round_data"
+    subtopic_index = message["subtopicIndex"]
+
+    # Fetch the round data from Redis as a serialized JSON string
+    round_data_json = await conn.get(rounds_key)
+    if not round_data_json:
+        raise HTTPException(status_code=404, detail="Round data not found")
+
+    # Parse the JSON string to get the round data
+    round_data = json.loads(round_data_json)
+
+    # Run answer evaluation in a background task
+    background_tasks.add_task(
+        evaluate_answer, lobby_id, message, round_data, subtopic_index
+    )
+
+    return {"detail": "Answer received and being processed"}
+
+
+async def evaluate_answer(
+    lobby_id: str, message: dict, round_data: dict, subtopic_index: int
+):
+    """
+    Evaluates the player's answer using `grade_individual_answer`
+    and broadcasts the result via WebSocket.
+    """
+    # Get the narrative and misinformation for the current subtopic
+    subtopic = round_data["subtopics"][subtopic_index]
+    narrative = subtopic["narrative"]
+    misinformation = subtopic["misinformation"]
+
+    # Grade the player's answer
+    player_answer = message["message"]
+    score = grade_individual_answer(player_answer, narrative, misinformation)
+
+    if score == 1:
+        # Broadcast correct answer
+        await conn.publish(
+            f"channel:{lobby_id}",
+            json.dumps(
+                {
+                    "type": "correct_guess",
+                    "playerName": message["playerName"],
+                }
+            ),
+        )
+    else:
+        # Broadcast incorrect guess
+        await conn.publish(
+            f"channel:{lobby_id}",
+            json.dumps(
+                {
+                    "type": "wrong_guess",
+                    "playerName": message["playerName"],
+                    "message": player_answer,
+                }
+            ),
+        )

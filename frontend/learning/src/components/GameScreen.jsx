@@ -3,19 +3,23 @@ import axios from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import useWebSocket from "../hooks/useWebSocket";
-import Cube from './Cube';
 import "./GameScreen.css";
 
 const GameScreen = () => {
   const { lobbyId } = useParams(); // Get lobbyId from URL parameters
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
-  const [timeLeft, setTimeLeft] = useState(60); // Game duration in seconds
-  const [paragraphs, setParagraphs] = useState([]);
+  const [timeLeft, setTimeLeft] = useState(0); // Timer for each subtopic
+  const [currentSubtopicIndex, setCurrentSubtopicIndex] = useState(-1); // Index of current subtopic
+  const [roundData, setRoundData] = useState(null); // Data for the entire round
   const [chatMessages, setChatMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [userId, setUserId] = useState(null);
   const [playerName, setPlayerName] = useState("");
+  const [isHost, setIsHost] = useState(false);
+  const [scores, setScores] = useState({}); // Player scores
+  const [hasGuessedCorrectly, setHasGuessedCorrectly] = useState(false); // Track if player guessed correctly
+  const [correctGuessCount, setCorrectGuessCount] = useState(0); // Track how many players have guessed correctly
 
   // Initialize userId and playerName from localStorage
   useEffect(() => {
@@ -30,6 +34,22 @@ const GameScreen = () => {
 
     setUserId(storedUserId);
     setPlayerName(storedPlayerName);
+
+    // Determine if the player is the host
+    axios
+      .get(`/api/lobby/${lobbyId}`)
+      .then((response) => {
+        if (response.data.creator_id === storedUserId) {
+          console.log("We are host - call startRound()");
+          setIsHost(true);
+          // If the player is the host, kick off round generation immediately
+          startRound();
+        }
+      })
+      .catch(() => {
+        alert("Failed to load lobby details.");
+        navigate("/");
+      });
   }, [lobbyId, navigate]);
 
   // Fetch initial list of players
@@ -40,6 +60,12 @@ const GameScreen = () => {
           `/api/lobby/${lobbyId}/participants`
         );
         setPlayers(participantsResponse.data.players);
+        // Initialize scores to zero for each player
+        const initialScores = {};
+        participantsResponse.data.players.forEach((player) => {
+          initialScores[player] = 0;
+        });
+        setScores(initialScores);
       } catch (error) {
         console.error("Error fetching participants:", error);
       }
@@ -47,69 +73,94 @@ const GameScreen = () => {
     fetchPlayers();
   }, [lobbyId]);
 
-  // Fetch paragraphs from API when the game starts
-  useEffect(() => {
-    const fetchParagraphs = async () => {
-      try {
-        const response = await axios.get("/api/get-paragraphs"); // Update endpoint as needed
-        setParagraphs(response.data.paragraphs); // Assuming API returns a 'paragraphs' array
-      } catch (error) {
-        console.error("Error fetching paragraphs:", error);
-      }
-    };
-    fetchParagraphs();
-  }, []);
+  // Host starts the round by requesting round data generation
+  const startRound = async () => {
+    try {
+      console.log("Starting round generation...");
 
-  const onGameEnd = () => {};
+      // Make an HTTP request to initiate the round generation
+      await axios.post(`/api/rounds/start`, null, {
+        params: { lobby_id: lobbyId },
+      });
 
-  // Timer effect
+      // Since the response is immediate, we wait for the "round_data_ready" event from WebSocket
+      console.log("Round generation started. Waiting for results...");
+    } catch (error) {
+      console.error("Error starting the round:", error);
+    }
+  };
+
+  // Timer effect for each subtopic
   useEffect(() => {
     if (timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else {
-      onGameEnd(); // End game when time runs out
+    } else if (timeLeft === 0 && currentSubtopicIndex >= 0) {
+      // End of subtopic, advance to the next one
+      handleEndOfSubtopic();
     }
-  }, [timeLeft, onGameEnd]);
+  }, [timeLeft, currentSubtopicIndex]);
 
-  // Handle incoming WebSocket messages
   const handleIncomingMessage = useCallback(
     (message) => {
       try {
         const parsedMessage = JSON.parse(message);
         switch (parsedMessage.type) {
-          case "chat_message":
-            // Prevent adding the message twice for the sender
-            if (parsedMessage.user_id !== userId) {
-              setChatMessages((prevMessages) => [
-                ...prevMessages,
-                {
-                  player: parsedMessage.playerName,
-                  message: parsedMessage.message,
-                },
-              ]);
+          case "round_data_ready":
+            setRoundData(parsedMessage.roundData);
+            setCurrentSubtopicIndex(0);
+            setTimeLeft(60); // Start countdown for the first subtopic
+            setHasGuessedCorrectly(false); // Reset correct guess state for each player
+            setCorrectGuessCount(0); // Reset correct guess count for the new round
+            break;
+          case "round_error":
+            console.error("Error generating round:", parsedMessage.message);
+            break;
+          case "wrong_guess":
+            setChatMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                player: parsedMessage.playerName,
+                message: parsedMessage.message,
+              },
+            ]);
+            break;
+          case "correct_guess":
+            // Update score and notify players that someone got it right
+            setScores((prevScores) => ({
+              ...prevScores,
+              [parsedMessage.playerName]:
+                prevScores[parsedMessage.playerName] + timeLeft,
+            }));
+            setChatMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                player: "System",
+                message: `${parsedMessage.playerName} got the answer!`,
+              },
+            ]);
+
+            if (parsedMessage.playerName === playerName) {
+              setHasGuessedCorrectly(true); // Set that the current player guessed correctly
             }
-            break;
-          case "player_joined":
-            setPlayers((prevPlayers) => {
-              if (!prevPlayers.includes(parsedMessage.playerName)) {
-                return [...prevPlayers, parsedMessage.playerName];
+
+            // Update correct guess count
+            setCorrectGuessCount((prevCount) => {
+              const newCount = prevCount + 1;
+
+              // If everyone has guessed correctly, set the timer to zero
+              if (newCount === players.length) {
+                setTimeLeft(0);
               }
-              return prevPlayers;
+
+              return newCount;
             });
-            break;
-          case "player_left":
-            setPlayers((prevPlayers) =>
-              prevPlayers.filter(
-                (player) => player !== parsedMessage.playerName
-              )
-            );
             break;
           case "lobby_closed":
             alert(
               parsedMessage.message || "The lobby has been closed by the host."
             );
-            navigate("/"); // Redirect all players to the home screen
+            navigate("/");
             break;
           default:
             console.warn("Unhandled message type:", parsedMessage.type);
@@ -118,98 +169,117 @@ const GameScreen = () => {
         console.error("Error parsing WebSocket message:", error);
       }
     },
-    [userId, navigate]
+    [userId, navigate, timeLeft, playerName, players.length]
   );
 
-  // Use WebSocket hook
   const sendMessage = useWebSocket(lobbyId, userId, handleIncomingMessage);
 
-  // Handle sending a chat message
-  const sendChatMessage = (e) => {
-    e.preventDefault();
-    if (currentMessage.trim()) {
-      // Send the message via WebSocket
-      const messageData = {
-        type: "chat_message",
-        message: currentMessage,
-        user_id: userId,
-        playerName: playerName, // Include playerName
-      };
-      sendMessage(JSON.stringify(messageData));
-
-      // Display your own message immediately
-      setChatMessages((prevMessages) => [
-        ...prevMessages,
-        { player: playerName || "You", message: currentMessage },
-      ]);
-
-      setCurrentMessage(""); // Clear input after sending
+  const handleEndOfSubtopic = () => {
+    if (currentSubtopicIndex + 1 < roundData.subtopics.length) {
+      // Advance to the next subtopic
+      setCurrentSubtopicIndex(currentSubtopicIndex + 1);
+      setTimeLeft(60); // Restart timer for the next subtopic
+      setChatMessages([]); // Clear chat for the new round
+      setHasGuessedCorrectly(false); // Reset correct guess state for the new subtopic
+      setCorrectGuessCount(0); // Reset correct guess count for the new subtopic
+    } else {
+      // End of the game
+      onGameEnd();
     }
   };
 
-  // Calculate color based on time left
-  const getTimeBarColor = () => {
-    if (timeLeft > 40) return "green";
-    if (timeLeft > 20) return "orange";
-    if (timeLeft > 10) return "yellow";
-    return "red";
+  const onGameEnd = () => {
+    setTimeLeft(0);
+    alert("The game has ended! Check out the final scores.");
+  };
+
+  // Handle sending a chat message (player's guess)
+  const sendChatMessage = async (e) => {
+    e.preventDefault();
+    if (currentMessage.trim() && !hasGuessedCorrectly) {
+      const messageData = {
+        message: currentMessage,
+        user_id: userId,
+        playerName: playerName,
+        subtopicIndex: currentSubtopicIndex,
+      };
+
+      try {
+        // Send the answer to the backend for validation
+        await axios.post(`/api/submit-answer`, messageData, {
+          params: { lobby_id: lobbyId },
+        });
+      } catch (error) {
+        console.error("Error submitting the answer:", error);
+      }
+
+      // Clear input after submitting
+      setCurrentMessage("");
+    }
   };
 
   return (
     <div className="game-screen">
-      <div><Cube isSmall={true} /> {}</div>
       {/* Time Bar */}
       <div className="time-bar">
         <div
           className="time-remaining"
           style={{
             width: `${(timeLeft / 60) * 100}%`,
-            backgroundColor: getTimeBarColor(),
+            backgroundColor:
+              timeLeft > 40
+                ? "green"
+                : timeLeft > 20
+                ? "orange"
+                : timeLeft > 10
+                ? "yellow"
+                : "red",
           }}
         ></div>
       </div>
 
-      <div className="game-screen">
-        {/* Player Scores */}
-        <div className="player-scores">
-          <h3>Players</h3>
-          <ul>
-            {players.map((player, index) => (
-              <li key={index}>
-                {player} : {0} {/* Placeholder for score */}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* Player Scores */}
+      <div className="player-scores">
+        <h3>Players</h3>
+        <ul>
+          {players.map((player, index) => (
+            <li key={index}>
+              {player} : {scores[player] || 0}
+            </li>
+          ))}
+        </ul>
+      </div>
 
-        {/* Paragraphs in the middle */}
-        <div className="paragraphs-container">
-          {paragraphs.map((paragraph, index) => (
-            <p key={index} className="paragraph-chunk">
-              {paragraph}
+      {/* Narrative Section */}
+      <div className="paragraphs-container">
+        {roundData && currentSubtopicIndex >= 0 && (
+          <p className="paragraph-chunk">
+            {roundData.subtopics[currentSubtopicIndex].narrative}
+          </p>
+        )}
+      </div>
+
+      {/* Chat Box */}
+      <div className="chat-box">
+        <div className="chat-messages">
+          {chatMessages.map((msg, index) => (
+            <p key={index}>
+              <strong>{msg.player}:</strong> {msg.message}
             </p>
           ))}
         </div>
-
-        {/* Chat Box */}
-        <div className="chat-box">
-          <div className="chat-messages">
-            {chatMessages.map((msg, index) => (
-              <p key={index}>
-                <strong>{msg.player}:</strong> {msg.message}
-              </p>
-            ))}
-          </div>
-          <form onSubmit={sendChatMessage}>
-            <input
-              type="text"
-              value={currentMessage}
-              onChange={(e) => setCurrentMessage(e.target.value)}
-              placeholder="Type your answer..."
-            />
-            <button type="submit">Send</button>
-          </form>
-        </div>
+        <form onSubmit={sendChatMessage}>
+          <input
+            type="text"
+            value={currentMessage}
+            onChange={(e) => setCurrentMessage(e.target.value)}
+            placeholder="Type your answer..."
+            disabled={timeLeft <= 0 || hasGuessedCorrectly}
+          />
+          <button type="submit" disabled={timeLeft <= 0 || hasGuessedCorrectly}>
+            Send
+          </button>
+        </form>
       </div>
     </div>
   );
