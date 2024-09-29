@@ -9,10 +9,10 @@ function PlayerTable() {
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
   const [isHost, setIsHost] = useState(false);
-  const [playerName, setPlayerName] = useState("");
-  const [nameEntered, setNameEntered] = useState(false);
+  const [playerName, setPlayerName] = useState(localStorage.getItem("player_name") || "");
+  const [nameEntered, setNameEntered] = useState(Boolean(localStorage.getItem("player_name")));
   const [inviteLink, setInviteLink] = useState("");
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState(localStorage.getItem("user_id") || null);
 
   useEffect(() => {
     const checkHostAndFetchPlayers = async () => {
@@ -29,6 +29,7 @@ function PlayerTable() {
 
         if (creator_id === storedUserId) {
           localStorage.setItem("player_name", "Host");
+          setPlayerName("Host");
           setIsHost(true);
         }
 
@@ -95,6 +96,7 @@ function PlayerTable() {
         player_name: playerName,
       });
       setNameEntered(true);
+      localStorage.setItem("player_name", playerName); // Store player name in localStorage
     } catch (error) {
       console.error("Error joining lobby:", error);
       alert("An unexpected error occurred. Please try again.");
