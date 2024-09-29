@@ -223,6 +223,7 @@ async def websocket_receiver(
                 # Broadcast the chat message to all players in the lobby
                 player_name = message.get("playerName")
                 chat_message = message.get("message")
+                user_id = message.get("user_id")
 
                 await conn.publish(
                     channel,
@@ -231,6 +232,7 @@ async def websocket_receiver(
                             "type": "chat_message",
                             "playerName": player_name,
                             "message": chat_message,
+                            "user_id": user_id,
                         }
                     ),
                 )

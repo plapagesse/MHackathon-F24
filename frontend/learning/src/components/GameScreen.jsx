@@ -21,8 +21,6 @@ const GameScreen = () => {
     const storedUserId = localStorage.getItem("user_id");
     const storedPlayerName = localStorage.getItem("player_name");
 
-    console.log("Stored User ID: ", storedUserId, "; Stored player name: ", storedPlayerName);
-
     if (!storedUserId || !storedPlayerName) {
       alert("User ID or Player Name not found. Please join the lobby first.");
       navigate(`/playertable/${lobbyId}`);
@@ -80,13 +78,16 @@ const GameScreen = () => {
         const parsedMessage = JSON.parse(message);
         switch (parsedMessage.type) {
           case "chat_message":
-            setChatMessages((prevMessages) => [
-              ...prevMessages,
-              {
-                player: parsedMessage.playerName,
-                message: parsedMessage.message,
-              },
-            ]);
+            // Prevent adding the message twice for the sender
+            if (parsedMessage.user_id !== userId) {
+              setChatMessages((prevMessages) => [
+                ...prevMessages,
+                {
+                  player: parsedMessage.playerName,
+                  message: parsedMessage.message,
+                },
+              ]);
+            }
             break;
           case "player_joined":
             setPlayers((prevPlayers) => {
@@ -110,7 +111,7 @@ const GameScreen = () => {
         console.error("Error parsing WebSocket message:", error);
       }
     },
-    [] // No dependencies needed
+    [userId] // Added dependency on userId to track the current player
   );
 
   // Use WebSocket hook
@@ -129,7 +130,7 @@ const GameScreen = () => {
       };
       sendMessage(JSON.stringify(messageData));
 
-      // Optionally, display your own message immediately
+      // Display your own message immediately
       setChatMessages((prevMessages) => [
         ...prevMessages,
         { player: playerName || "You", message: currentMessage },
