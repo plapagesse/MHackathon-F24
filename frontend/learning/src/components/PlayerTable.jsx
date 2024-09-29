@@ -39,13 +39,14 @@ function PlayerTable() {
       } catch (error) {
         console.error("Error fetching lobby details:", error);
         alert("Failed to fetch lobby details. Please ensure the lobby exists.");
+        navigate("/");  // Redirect to home screen after showing the alert
       }
     };
 
     checkHostAndFetchPlayers();
     const currentLink = `${window.location.origin}/playertable/${lobbyId}`;
     setInviteLink(currentLink);
-  }, [lobbyId]);
+  }, [lobbyId, navigate]);
 
   const handleIncomingMessage = useCallback(
     (message) => {
@@ -71,8 +72,8 @@ function PlayerTable() {
             navigate(`/game/${lobbyId}`);
             break;
           case "lobby_closed":
-            alert(parsedMessage.message || "Lobby has been closed by the host.");
-            navigate("/");
+            alert(parsedMessage.message || "The lobby has been closed by the host.");
+            navigate("/"); // Redirect all players to the home screen
             break;
           default:
             console.warn("Unhandled message type:", parsedMessage.type);

@@ -196,6 +196,12 @@ async def chat(lobby_id: str, message: ChatMessage):
     return {"detail": "Message sent"}
 
 
+import asyncio
+import json
+
+from fastapi import WebSocket, WebSocketDisconnect
+
+
 async def websocket_receiver(
     websocket: WebSocket, lobby_id: str, user_id: str, is_game_start: asyncio.Event
 ):
@@ -237,16 +243,30 @@ async def websocket_receiver(
                     ),
                 )
 
-            # Handle other messages if needed, such as player heartbeats, etc.
-
     except WebSocketDisconnect:
-        # Check if the disconnect was not a start game event
+        # Handle disconnect based on whether it's the host or a regular player
         if not is_game_start.is_set():
-            player_name = await conn.hget(f"lobby:{lobby_id}:players", user_id)
-            await conn.publish(
-                f"channel:{lobby_id}",
-                json.dumps({"type": "player_left", "playerName": player_name}),
-            )
+            lobby_key = f"lobby:{lobby_id}"
+            player_name = await conn.hget(f"{lobby_key}:players", user_id)
+            creator_id = await conn.hget(f"{lobby_key}", "creator")
+
+            # If the host disconnected ungracefully, close the lobby for everyone
+            if user_id == creator_id:
+                await conn.publish(
+                    f"channel:{lobby_id}",
+                    json.dumps(
+                        {
+                            "type": "lobby_closed",
+                            "message": "The host has disconnected. The lobby is closed.",
+                        }
+                    ),
+                )
+            else:
+                # Broadcast player left event for non-hosts
+                await conn.publish(
+                    f"channel:{lobby_id}",
+                    json.dumps({"type": "player_left", "playerName": player_name}),
+                )
 
 
 @app.websocket("/ws/{lobby_id}")
@@ -265,6 +285,8 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
         return
 
     lobby_key = f"lobby:{lobby_id}"
+
+    # Check if the lobby still exists before accepting the connection
     if not await conn.exists(lobby_key):
         await websocket.close(code=1008, reason="Lobby does not exist")
         return
@@ -306,3 +328,9 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
     # Only remove from participants if the user was not transitioning to the game
     if not is_game_start.is_set():
         await conn.srem(f"{lobby_key}:participants", user_id)
+
+        # Additional step: If the disconnecting user is the host, delete the lobby
+        creator_id = await conn.hget(lobby_key, "creator_id")
+        if user_id == creator_id:
+            # Mark the lobby as closed to prevent reconnections
+            await conn.delete(lobby_key)

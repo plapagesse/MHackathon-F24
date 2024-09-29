@@ -105,6 +105,12 @@ const GameScreen = () => {
               )
             );
             break;
+          case "lobby_closed":
+            alert(
+              parsedMessage.message || "The lobby has been closed by the host."
+            );
+            navigate("/"); // Redirect all players to the home screen
+            break;
           default:
             console.warn("Unhandled message type:", parsedMessage.type);
         }
@@ -112,7 +118,7 @@ const GameScreen = () => {
         console.error("Error parsing WebSocket message:", error);
       }
     },
-    [userId] // Added dependency on userId to track the current player
+    [userId, navigate]
   );
 
   // Use WebSocket hook
