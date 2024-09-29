@@ -18,6 +18,7 @@ const GameScreen = () => {
   const [playerName, setPlayerName] = useState("");
   const [isHost, setIsHost] = useState(false);
   const [scores, setScores] = useState({}); // Player scores
+  const [hasGuessedCorrectly, setHasGuessedCorrectly] = useState(false); // Track if player guessed correctly
 
   // Initialize userId and playerName from localStorage
   useEffect(() => {
@@ -108,6 +109,7 @@ const GameScreen = () => {
             setRoundData(parsedMessage.roundData);
             setCurrentSubtopicIndex(0);
             setTimeLeft(60); // Start countdown for the first subtopic
+            setHasGuessedCorrectly(false); // Reset correct guess state for each player
             break;
           case "round_error":
             console.error("Error generating round:", parsedMessage.message);
@@ -135,7 +137,9 @@ const GameScreen = () => {
                 message: `${parsedMessage.playerName} got the answer!`,
               },
             ]);
-            setTimeLeft(0); // End the round as the answer is correct
+            if (parsedMessage.playerName === playerName) {
+              setHasGuessedCorrectly(true); // Set that the current player guessed correctly
+            }
             break;
           case "lobby_closed":
             alert(
@@ -150,7 +154,7 @@ const GameScreen = () => {
         console.error("Error parsing WebSocket message:", error);
       }
     },
-    [userId, navigate, timeLeft]
+    [userId, navigate, timeLeft, playerName]
   );
 
   const sendMessage = useWebSocket(lobbyId, userId, handleIncomingMessage);
@@ -161,6 +165,7 @@ const GameScreen = () => {
       setCurrentSubtopicIndex(currentSubtopicIndex + 1);
       setTimeLeft(60); // Restart timer for the next subtopic
       setChatMessages([]); // Clear chat for the new round
+      setHasGuessedCorrectly(false); // Reset correct guess state for the new subtopic
     } else {
       // End of the game
       onGameEnd();
@@ -175,7 +180,7 @@ const GameScreen = () => {
   // Handle sending a chat message (player's guess)
   const sendChatMessage = async (e) => {
     e.preventDefault();
-    if (currentMessage.trim()) {
+    if (currentMessage.trim() && !hasGuessedCorrectly) {
       const messageData = {
         message: currentMessage,
         user_id: userId,
@@ -253,9 +258,9 @@ const GameScreen = () => {
             value={currentMessage}
             onChange={(e) => setCurrentMessage(e.target.value)}
             placeholder="Type your answer..."
-            disabled={timeLeft <= 0}
+            disabled={timeLeft <= 0 || hasGuessedCorrectly}
           />
-          <button type="submit" disabled={timeLeft <= 0}>
+          <button type="submit" disabled={timeLeft <= 0 || hasGuessedCorrectly}>
             Send
           </button>
         </form>
