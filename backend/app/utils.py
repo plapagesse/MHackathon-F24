@@ -2,18 +2,16 @@ import io
 import os
 import random
 import re
-from typing import List, Dict
-
-from dotenv import load_dotenv
+from typing import Dict, List
 
 import pdfplumber
+from app.schemas import StudyNarrative, StudyQuestion
 from docx import Document
+from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
-
-from app.schemas import StudyQuestion, StudyNarrative
 
 # from langchain_ollama import ChatOllama
 
@@ -58,7 +56,9 @@ def extract_text_from_docx(content: bytes) -> str:
 
 
 # Function to process document and generate flashcards (multiple choice questions)
-def process_document(content: bytes, filename: str, generation_type: str) -> List[StudyQuestion]:
+def process_document(
+    content: bytes, filename: str, generation_type: str
+) -> List[StudyQuestion]:
     """
     Process the input document and generate multiple-choice flashcards.
 
@@ -91,7 +91,8 @@ def process_document(content: bytes, filename: str, generation_type: str) -> Lis
         return generate_narrative_with_misinformation(" ".join(documents))
     else:
         raise ValueError(
-            "Unsupported question/challenge type. Current options: 'flashcards', 'narrative'.")
+            "Unsupported question/challenge type. Current options: 'flashcards', 'narrative'."
+        )
 
 
 def generate_flashcards_from_chunks(chunks: List[str]) -> List[StudyQuestion]:
@@ -180,8 +181,9 @@ def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
 
     narrative_parts = narrative_text.split("Incorrect statement:")
     narrative = narrative_parts[0].strip()
-    incorrect_statements = [line.strip()
-                            for line in narrative_parts[1].strip().split("\n")]
+    incorrect_statements = [
+        line.strip() for line in narrative_parts[1].strip().split("\n")
+    ]
 
     print("narrative part", narrative)
     print("misinfo", incorrect_statements)
@@ -189,7 +191,12 @@ def generate_narrative_with_misinformation(content: str) -> StudyNarrative:
     return StudyNarrative(narrative=narrative, misinformation=incorrect_statements)
 
 
-def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: StudyNarrative, max_time: float = 60.0, time_weight: float = 0.2) -> Dict[str, float]:
+def grade_player_raw_answers(
+    player_answers: Dict[str, str],
+    study_narrative: StudyNarrative,
+    max_time: float = 60.0,
+    time_weight: float = 0.2,
+) -> Dict[str, float]:
     """
     Grade players' answers as correct (1) or incorrect (0), and adjust the score based on response time for correct answers.
 
@@ -198,7 +205,7 @@ def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: St
         study_narrative (StudyNarrative): The StudyNarrative object containing the correct misinformation.
 
     Returns:
-        Tuple (raw_scores: Dict[str, float], final_scores: Dict[str, float]): 
+        Tuple (raw_scores: Dict[str, float], final_scores: Dict[str, float]):
         - raw_scores: 1 if the answer is correct, 0 if incorrect.
         - final_scores: Adjusted scores based on correctness and response time.
     """
@@ -217,8 +224,8 @@ def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: St
     correct_misinformation = study_narrative.misinformation[0]
 
     for player, data in player_answers.items():
-        answer = data['answer']
-        response_time = data['response_time']
+        answer = data["answer"]
+        response_time = data["response_time"]
 
         # correct/incorrect grading
         prompt = f"""
@@ -241,8 +248,7 @@ def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: St
             print(f"Response for player {player}:\n{response_text}")
 
             # extract score after 'Final Score:'
-            score_match = re.search(
-                r"(Final Score:)\s*\**(\d)\**", response_text)
+            score_match = re.search(r"(Final Score:)\s*\**(\d)\**", response_text)
             if score_match:
                 # 1 for correct, 0 for incorrect
                 correctness_score = float(score_match.group(2))
@@ -256,16 +262,17 @@ def grade_player_raw_answers(player_answers: Dict[str, str], study_narrative: St
         raw_scores[player] = correctness_score
 
     # adjust scores based on response time for correct answers ONLY
-    min_time = min([player_answers[player]['response_time']
-                   for player in raw_scores])
-    max_time = max([player_answers[player]['response_time']
-                   for player in raw_scores])
+    min_time = min([player_answers[player]["response_time"] for player in raw_scores])
+    max_time = max([player_answers[player]["response_time"] for player in raw_scores])
 
     for player, score in raw_scores.items():
-        time = player_answers[player]['response_time']
+        time = player_answers[player]["response_time"]
         if score == 1:  # apply time adjustment for correct answers
-            normalized_time = (max_time - time) / (max_time -
-                                                   min_time) if max_time != min_time else 1.0
+            normalized_time = (
+                (max_time - time) / (max_time - min_time)
+                if max_time != min_time
+                else 1.0
+            )
             time_adjustment = normalized_time * time_weight
             final_score = score + time_adjustment * score
         else:
