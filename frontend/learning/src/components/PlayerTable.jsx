@@ -18,7 +18,7 @@ function PlayerTable() {
     const checkHostAndFetchPlayers = async () => {
       try {
         const response = await axios.get(`/api/lobby/${lobbyId}`);
-        const { creator_id, topic } = response.data;
+        const { creator_id } = response.data;
 
         let storedUserId = localStorage.getItem("user_id");
         if (!storedUserId) {
@@ -28,6 +28,7 @@ function PlayerTable() {
         setUserId(storedUserId);
 
         if (creator_id === storedUserId) {
+          localStorage.setItem("player_name", "Host");
           setIsHost(true);
         }
 
@@ -46,6 +47,7 @@ function PlayerTable() {
 
   const handleIncomingMessage = useCallback(
     (message) => {
+      console.log("Received websocket message: ", message);
       try {
         const parsedMessage = JSON.parse(message);
         switch (parsedMessage.type) {
@@ -76,7 +78,7 @@ function PlayerTable() {
         console.error("Error parsing WebSocket message:", error);
       }
     },
-    [navigate, lobbyId] // Include dependencies that are used inside the function
+    [navigate, lobbyId]
   );
 
   const sendMessage = useWebSocket(lobbyId, userId, handleIncomingMessage);
@@ -99,7 +101,12 @@ function PlayerTable() {
     }
   };
 
-  const handleStartGame = () => {}
+  const handleStartGame = () => {
+    sendMessage(JSON.stringify({ type: "start_game_initiated" }));
+    setTimeout(() => {
+      navigate(`/game/${lobbyId}`);
+    }, 1000); // Add a small delay for smoother transition
+  }
 
   return (
     <div>

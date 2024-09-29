@@ -196,20 +196,34 @@ async def chat(lobby_id: str, message: ChatMessage):
     return {"detail": "Message sent"}
 
 
-async def websocket_receiver(websocket: WebSocket, lobby_id: str, user_id: str):
+async def websocket_receiver(
+    websocket: WebSocket, lobby_id: str, user_id: str, is_game_start: asyncio.Event
+):
     channel = f"channel:{lobby_id}"
     try:
         while True:
             data = await websocket.receive_text()
-            # Handle messages like heartbeat if needed
-            pass
+            message = json.loads(data)
+
+            if message["type"] == "start_game_initiated":
+                # Set the event to signal that the game is starting
+                is_game_start.set()
+                # Broadcast to all other players that the game is starting
+                await conn.publish(
+                    channel, json.dumps({"type": "start_game", "initiatedByHost": True})
+                )
+                return
+
+            # Handle other messages if needed
+            # Example: heartbeat, player chat, etc.
     except WebSocketDisconnect:
-        # Notify via Pub/Sub that the player has left
-        player_name = await conn.hget(f"lobby:{lobby_id}:players", user_id)
-        await conn.publish(
-            f"channel:{lobby_id}",
-            json.dumps({"type": "player_left", "playerName": player_name}),
-        )
+        # Check if the disconnect was not a start game event
+        if not is_game_start.is_set():
+            player_name = await conn.hget(f"lobby:{lobby_id}:players", user_id)
+            await conn.publish(
+                f"channel:{lobby_id}",
+                json.dumps({"type": "player_left", "playerName": player_name}),
+            )
 
 
 @app.websocket("/ws/{lobby_id}")
@@ -237,12 +251,17 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
     pubsub = pubsub_conn.pubsub()
     await pubsub.subscribe(f"channel:{lobby_id}")
 
+    # Create an asyncio Event to track if the game is starting
+    is_game_start = asyncio.Event()
+
     async def send_messages():
         async for message in pubsub.listen():
             if message["type"] == "message":
                 await websocket.send_text(message["data"])
 
-    receive_task = asyncio.create_task(websocket_receiver(websocket, lobby_id, user_id))
+    receive_task = asyncio.create_task(
+        websocket_receiver(websocket, lobby_id, user_id, is_game_start)
+    )
     send_task = asyncio.create_task(send_messages())
 
     done, pending = await asyncio.wait(
@@ -251,6 +270,10 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
     )
     for task in pending:
         task.cancel()
+
+    # If the game is starting, add a small delay to ensure smooth transition
+    if is_game_start.is_set():
+        await asyncio.sleep(2)  # 2-second delay to allow for game transition
 
     # Clean up on disconnect
     await pubsub.unsubscribe(f"channel:{lobby_id}")
