@@ -224,10 +224,11 @@ def generate_bullets_from_topic(topic: str) -> StudyNarrative:
     # print(selected_topics)
     for topic in selected_topics:
         print(topic)
-        generate_narrative_from_topic(topic)
+        location = random.sample(["start", "middle", "end"], k=1)[0]
+        generate_narrative_from_topic(topic, location)
 
 
-def generate_narrative_from_topic(content: str) -> StudyNarrative:
+def generate_narrative_from_topic(content: str, location) -> StudyNarrative:
 
     load_dotenv()
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -238,11 +239,11 @@ def generate_narrative_from_topic(content: str) -> StudyNarrative:
 
     prompt_template = f"""
         Given the following topic, create a flowing narrative with an explanation of the subject with 1 intentionally incorrect statement. Explain the topic, but include a sentence or concept that is
-        wrong. You will say the wrong concept or statement as if it were treue. Yoiu know it is not true, but you sre trying to trick the players so say it with confidence.
-        This is a game where players will need to identify the incorrect part of your text. List the incorrect statement as the format states. Try to hide it place it randomly in the text.
-         It could be in the end, middle or beginning. The players will tell us what they think the incorrect statement is so we need it to tell whether they got it right or not.
+        wrong. You will say the wrong concept or statement as if it were true. You know it is not true, but you are trying to trick the players to think it is true, so state it with confidence. Place the incorrect statement 
+        at the {location} of yor text. Remeber this statement at the {location} of your text will be incorrect, but you will say it as if it was correct. You will place it around the {location}, but not exactly at the {location}.
+        This is a game where players will need to identify the incorrect part of your text. List the incorrect statement as the format states.
 
-        Content: {content}
+        Topic: {content}
 
         Format:
         Narrative:
