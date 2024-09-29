@@ -219,8 +219,24 @@ async def websocket_receiver(
                 is_game_start.set()
                 return
 
-            # Handle other messages if needed
-            # Example: heartbeat, player chat, etc.
+            elif message["type"] == "chat_message":
+                # Broadcast the chat message to all players in the lobby
+                player_name = message.get("playerName")
+                chat_message = message.get("message")
+
+                await conn.publish(
+                    channel,
+                    json.dumps(
+                        {
+                            "type": "chat_message",
+                            "playerName": player_name,
+                            "message": chat_message,
+                        }
+                    ),
+                )
+
+            # Handle other messages if needed, such as player heartbeats, etc.
+
     except WebSocketDisconnect:
         # Check if the disconnect was not a start game event
         if not is_game_start.is_set():
