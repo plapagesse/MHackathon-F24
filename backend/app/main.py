@@ -214,6 +214,11 @@ async def websocket_receiver(
                 )
                 return
 
+            elif message["type"] == "transitioning_to_game":
+                # Set the event indicating the user is intentionally transitioning to the game
+                is_game_start.set()
+                return
+
             # Handle other messages if needed
             # Example: heartbeat, player chat, etc.
     except WebSocketDisconnect:
@@ -279,4 +284,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_id: str):
     await pubsub.unsubscribe(f"channel:{lobby_id}")
     await pubsub.close()
     await pubsub_conn.close()
-    await conn.srem(f"{lobby_key}:participants", user_id)
+
+    # Only remove from participants if the user was not transitioning to the game
+    if not is_game_start.is_set():
+        await conn.srem(f"{lobby_key}:participants", user_id)

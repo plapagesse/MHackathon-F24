@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import useWebSocket from "../hooks/useWebSocket";
@@ -13,6 +13,7 @@ function PlayerTable() {
   const [nameEntered, setNameEntered] = useState(Boolean(localStorage.getItem("player_name")));
   const [inviteLink, setInviteLink] = useState("");
   const [userId, setUserId] = useState(localStorage.getItem("user_id") || null);
+  const isGameStarting = useRef(false);  // Track if the game is starting
 
   useEffect(() => {
     const checkHostAndFetchPlayers = async () => {
@@ -48,7 +49,6 @@ function PlayerTable() {
 
   const handleIncomingMessage = useCallback(
     (message) => {
-      console.log("Received websocket message: ", message);
       try {
         const parsedMessage = JSON.parse(message);
         switch (parsedMessage.type) {
@@ -66,6 +66,8 @@ function PlayerTable() {
             );
             break;
           case "start_game":
+            isGameStarting.current = true;  // Set the flag to indicate that the game is starting
+            sendMessage(JSON.stringify({ type: "transitioning_to_game" }));  // Notify server of transition
             navigate(`/game/${lobbyId}`);
             break;
           case "lobby_closed":
@@ -104,8 +106,10 @@ function PlayerTable() {
   };
 
   const handleStartGame = () => {
+    isGameStarting.current = true;  // Set the flag to indicate that the game is starting
     sendMessage(JSON.stringify({ type: "start_game_initiated" }));
     setTimeout(() => {
+      sendMessage(JSON.stringify({ type: "transitioning_to_game" }));  // Notify server of transition
       navigate(`/game/${lobbyId}`);
     }, 1000); // Add a small delay for smoother transition
   }
