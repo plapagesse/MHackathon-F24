@@ -195,6 +195,10 @@ const GameScreen = () => {
   const onGameEnd = () => {
     setTimeLeft(0);
     alert("The game has ended! Check out the final scores.");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("lobby_id");
+    localStorage.removeItem("player_name");
+    navigate("/");
   };
 
   // Handle sending a chat message (player's guess)
